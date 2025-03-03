@@ -11,6 +11,7 @@ I piloti hanno un team tecnico e sponsor.
 I Gran Premi sono suddivisi in eventi e gare con classifiche e penalità.
 
 # Google Meet - Analisi del Traffico di Rete
+Corso: Advanced Internet Technologies 
 Strumenti utilizzati:
 Wireshark: Analisi dei pacchetti di rete
 Network Tab: Osservazione delle richieste e risposte HTTP
@@ -20,6 +21,7 @@ Sistema operativo: VM con Debian
 Browser: Firefox
 
 # Summary - Analisi del Phishing con Free Website Builders
+Tesi di Laurea
 Tema della ricerca: Studio delle tecniche di phishing utilizzando website builder gratuiti.
 Analisi:
 Come i malintenzionati creano siti fraudolenti.
