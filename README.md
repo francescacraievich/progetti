@@ -2,7 +2,7 @@
 Progetti svolti durante il percorso formativo.  
 
 ## Lab 1: Configurazione di Reti IPv6 con Mininet  
-**Corso:** Reti di Calcolatori II  
+**Corso:** Advanced Internet Technologies 
 **Descrizione:**  
 Configurazione di reti IPv6 su un ambiente virtuale usando Mininet.  
 Assegnazione di indirizzi IPv6, analisi del traffico generato e confronto con IPv4, gestione delle tabelle di routing  
@@ -10,7 +10,7 @@ e test di comunicazione tra host virtuali.
 Esperimenti sulla duplicazione di indirizzi IPv6 e gestione delle tabelle di routing per la comunicazione tra sottoreti.  
 
 ## Lab 2: Virtual Private Networks (VPN)  
-**Corso:** Reti di Calcolatori II  
+**Corso:** Advanced Internet Technologies   
 **Descrizione:**  
 Configurazione e utilizzo di una VPN basata su L2TP e IPSec.  
 Analisi del traffico di rete prima e dopo l'attivazione della VPN per verificare il cambio di indirizzo IP pubblico  
@@ -25,7 +25,7 @@ e l'instradamento del traffico attraverso il server VPN.
 - Analisi del caricamento di una pagina web con e senza VPN per verificare eventuali differenze nei tempi di risposta e negli IP contattati.  
 
 ## Lab 3: Analisi delle Prestazioni di HTTP e QUIC  
-**Corso:** Reti di Calcolatori II  
+**Corso:** Advanced Internet Technologies   
 **Descrizione:**  
 Esperimenti su TCP, HTTP (diverse versioni) e QUIC per valutarne le prestazioni.  
 Utilizzo di strumenti come Google Chrome Debugger, BrowserTime e `curl` per ispezionare le transazioni HTTP,  
@@ -39,7 +39,7 @@ effettuare scraping e misurare le prestazioni delle pagine web con diversi proto
 - Applicazione di ritardi artificiali sulla rete per osservare l'impatto sulle prestazioni di caricamento.  
 
 ## Database - Gestione dati Motomondiale  
-**Corso:** Ingegneria Elettronica e Informatica – Basi di Dati  
+**Corso:** Basi di Dati  
 **Descrizione:**  
 Progettazione e sviluppo di un database per la gestione del campionato mondiale di motociclismo (classi 125, 250 e 500).  
 Il sistema prevede la registrazione delle case produttrici, dei piloti, dei team tecnici e degli sponsor.  
