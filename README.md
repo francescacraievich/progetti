@@ -2,7 +2,7 @@
 Progetti svolti durante il percorso formativo.  
 
 ## Lab 1: Configurazione di Reti IPv6 con Mininet  
-**Corso:** Advanced Internet Technologies 
+**Corso:** Advanced Internet Technologies  
 **Descrizione:**  
 Configurazione di reti IPv6 su un ambiente virtuale usando Mininet.  
 Assegnazione di indirizzi IPv6, analisi del traffico generato e confronto con IPv4, gestione delle tabelle di routing  
