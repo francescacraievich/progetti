@@ -1,4 +1,4 @@
-# README - Laboratori di Programmazione
+Laboratori di Sistemi Operativi
 
 Questo repository contiene cinque laboratori di programmazione su Bash e C, ognuno con un obiettivo specifico. Di seguito vengono descritte le funzionalità di ciascun laboratorio e i comandi necessari per eseguire i programmi.
 
@@ -77,9 +77,5 @@ chmod +x container-run.sh  # Rendi eseguibile lo script
 ./container-run.sh conf-file.txt /bin/ls  # Esegue il comando /bin/ls all'interno del container
 ```
 
----
-
-## Contatti
-Se hai domande o suggerimenti, sentiti libero di aprire una issue o fare un pull request! 🚀
 
 
