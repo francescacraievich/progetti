@@ -1,4 +1,4 @@
-Laboratori di Sistemi Operativi
+# Laboratori di Sistemi Operativi
 
 Questo repository contiene cinque laboratori di programmazione su Bash e C, ognuno con un obiettivo specifico. Di seguito vengono descritte le funzionalità di ciascun laboratorio e i comandi necessari per eseguire i programmi.
 
