@@ -35,3 +35,16 @@ effettuare scraping e misurare le prestazioni delle pagine web con diversi proto
 - Confronto dei tempi di caricamento delle pagine con diverse versioni di HTTP.  
 - Applicazione di ritardi artificiali sulla rete per osservare l'impatto sulle prestazioni di caricamento.  
 
+## Google Meet - Analisi del Traffico di Rete  
+**Corso:** Advanced Internet Technologies  
+**Descrizione:**  
+Analisi del traffico di rete generato da Google Meet attraverso strumenti di ispezione e monitoraggio.  
+
+**Strumenti utilizzati:**  
+- **Wireshark:** Analisi dei pacchetti di rete  
+- **Network Tab:** Osservazione delle richieste e risposte HTTP  
+- **WebRTC-internals:** Analisi approfondita del traffico WebRTC  
+
+**Ambiente di test:**  
+- **Sistema operativo:** VM con Debian  
+- **Browser:** Firefox  
