@@ -20,7 +20,7 @@ Un summary sulla sicurezza informatica intitolato *Phishing in the Free Waters: 
 ### 4. Progetto
 Progetto sviluppato per il corso di **Programmazione Avanzata e Parallela**:
 - **C**: implementazione di un programma per disegnare frattali di **Mandelbrot** in formato **NETPBM** in scala di grigi.
-- **Python**: estensione del codice della **11ª esercitazione (19 dicembre 2023)** per supportare operazioni matematiche avanzate, inclusi operatori relazionali come `>`, `>=`, `==`, `!=`, `<`, `<=` e altre funzionalità dettagliate nel codice.
+- **Python**: estensione del codice della **11ª esercitazione (19 dicembre 2023)** per supportare operazioni matematiche avanzate, inclusi operatori relazionali come `>`, `>=`, `=`, `!=`, `<`, `<=` e altre funzionalità dettagliate nel codice.
 
 ### 5. Sistemi Operativi
 Questa directory include **5 laboratori** su tematiche avanzate di sistemi operativi:
