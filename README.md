@@ -1,37 +1,41 @@
 # Repository Overview
 
-Benvenuto nella mia repository! Qui troverai diversi progetti e laboratori sviluppati durante il mio percorso accademico. 
+Welcome to my repository! Here you will find a collection of projects and labs developed throughout my academic journey.
 
-## Contenuto della Repository
+## 📁 Repository Contents
 
-### 1. SnakeGameSDM24
-Un'implementazione del classico gioco Snake sviluppata in **Java** utilizzando **Java Swing** per l'interfaccia grafica. Il progetto è stato realizzato in gruppo seguendo il metodo **Scrum** e applicando il paradigma del **Test-Driven Development (TDD)**.
+### 1. SnakeGameSDM24  
+An implementation of the classic Snake game developed in **Java** using **Java Swing** for the graphical interface. The project was created in a team following the **Scrum** methodology and applying the **Test-Driven Development (TDD)** paradigm.
 
-### 2. Advanced Internet Technologies
-Questa directory contiene un'analisi avanzata di tecnologie di rete e protocolli:
-- **Google Meet Analysis**: studio del traffico di rete utilizzando **Wireshark**, **NetworkTab** e **WebRTC internals**.
-- **Laboratorio su IPv6**.
-- **Laboratorio sulle VPN**.
-- **Laboratorio su HTTP e QUIC**.
+### 2. Advanced Internet Technologies  
+This folder contains an in-depth analysis of networking technologies and protocols:
+- **Google Meet Analysis**: network traffic analysis using **Wireshark**, **NetworkTab**, and **WebRTC internals**  
+- **IPv6 Lab**  
+- **VPN Lab**  
+- **HTTP and QUIC Lab**
 
-### 3. Laurea
-Un summary sulla sicurezza informatica intitolato *Phishing in the Free Waters: A Study of Phishing Attacks Created by Using Free Website Builders Services*, in cui analizzo le tecniche di phishing realizzate tramite servizi gratuiti di creazione di siti web.
+### 3. Thesis  
+A cybersecurity summary titled _Phishing in the Free Waters: A Study of Phishing Attacks Created by Using Free Website Builder Services_, in which I analyze phishing techniques carried out through free website creation platforms.
 
-### 4. Progetto
-Progetto sviluppato per il corso di **Programmazione Avanzata e Parallela**:
-- **C**: implementazione di un programma per disegnare frattali di **Mandelbrot** in formato **NETPBM** in scala di grigi.
-- **Python**: estensione del codice della **11ª esercitazione (19 dicembre 2023)** per supportare operazioni matematiche avanzate, inclusi operatori relazionali come `>`, `>=`, `=`, `!=`, `<`, `<=` e altre funzionalità dettagliate nel codice.
+### 4. Project  
+Project developed for the **Advanced and Parallel Programming** course:
+- **C**: implementation of a program to generate **Mandelbrot fractals** in **NETPBM** grayscale format  
+- **Python**: extension of the code from the **11th lab session (December 19, 2023)** to support advanced mathematical operations, including relational operators like `>`, `>=`, `=`, `!=`, `<`, `<=`, and other features explained in the code
 
-### 5. Sistemi Operativi
-Questa directory include **5 laboratori** su tematiche avanzate di sistemi operativi:
-- **Bash scripting**.
-- **Gestione dei file in C**.
-- **Processi paralleli**.
-- **Sincronizzazione per gestione autonoleggio**.
-- **Container in Bash**.
+### 5. Operating Systems  
+This directory includes **5 labs** on advanced topics in operating systems:
+- **Bash scripting**  
+- **File management in C**  
+- **Parallel processes**  
+- **Synchronization for car rental management**  
+- **Containers using Bash**
 
-### 6. Database
-Un progetto per il corso di **Database**, in cui ho sviluppato la gestione dei dati del **mondo mondiale** utilizzando **MySQL**. Include lo **schema Entity-Relationship** e il **dizionario dei dati**.
+### 6. Database  
+A project for the **Database** course, where I managed world data using **MySQL**. It includes the **Entity-Relationship diagram** and the **data dictionary**.
 
+### 7. Cybersecurity  
+This folder includes two penetration testing demos developed during hands-on labs using **Kali Linux** and **Metasploitable3**:
 
+- **Demo 1**: Network scanning, SMB exploitation using EternalBlue, and system access via Meterpreter  
+- **Demo 2**: Brute-force attacks on SSH and MySQL using **Hydra**, WordPress hash extraction, and password cracking with **John the Ripper**
 
