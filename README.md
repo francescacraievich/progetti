@@ -38,4 +38,13 @@ This folder includes two penetration testing demos developed during hands-on lab
 
 - **Demo 1**: Network scanning, SMB exploitation using EternalBlue, and system access via Meterpreter  
 - **Demo 2**: Brute-force attacks on SSH and MySQL using **Hydra**, WordPress hash extraction, and password cracking with **John the Ripper**
+- 
+- # 🛡️ Cybersecurity Incident Response Challenge
+This repository contains my work for a simulated ransomware attack scenario targeting a hospital's network infrastructure.
+- **Task 1 - Malware Analysis**: Identified the initial infected host, exploited vulnerability, and possible attacker/C2 IP from network logs.
+- **Task 2 - Containment**: Developed a Python script to detect compromised hosts and isolate them from the network.
+- **Task 3 - Reverse Engineering**: Reconstructed the AES key from fragments and decrypted a critical file using CBC mode.
+- **Task 4 - Incident Report**: Wrote a summary report outlining impact assessment and recovery strategy.
+- **Task 5 (Optional) - Monitoring**: Built a basic monitoring tool to detect suspicious behavior in future network traffic.
+
 
