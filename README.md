@@ -34,8 +34,6 @@ This directory includes **5 labs** on advanced topics in operating systems:
 A project for the **Database** course, where I managed world data using **MySQL**. It includes the **Entity-Relationship diagram** and the **data dictionary**.
 
 ### 7. Cybersecurity  
-This folder includes two penetration testing demos developed during hands-on labs using **Kali Linux** and **Metasploitable3**:
-
 - **Demo 1**: Network scanning, SMB exploitation using EternalBlue, and system access via Meterpreter  
 - **Demo 2**: Brute-force attacks on SSH and MySQL using **Hydra**, WordPress hash extraction, and password cracking with **John the Ripper**
 - **Cybersecurity Incident Response Challenge**: Simulated ransomware attack scenario targeting a hospital's IT infrastructure, including:
