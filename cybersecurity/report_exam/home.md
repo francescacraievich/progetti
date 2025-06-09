@@ -28,7 +28,7 @@ This attack uses stack overflow to hijack control flow and reuse libc functions 
 - **Payload 2**: Calls `system("/bin/sh")` using computed libc addresses. Includes `pop rdi` gadget and `ret` for stack alignment.
 
 
-![alt text](stackdrawio-1.png)<br>
+![alt text](images/stackdrawio.png)<br>
 *Figure 1: Simplified stack layout.*
 
 > The call to `puts(setbuf@got)` jumps through the PLT and ends up calling the real `puts` inside libc. That function then **reads the pointer stored in `setbuf@got`**, which contains the **actual address of `setbuf` in libc**, and prints it.
@@ -78,7 +78,7 @@ pwninit is a tool that automates the initial setup for binary exploitation chall
 
 → Fetches `ld-2.27.so` automatically.
 
-![pwninit](image-1.png)<br>
+![pwninit](images/%20image-1.png)<br>
 *Figure 2: Fetching the linker with pwninit.*
 
 #### Running the binary
@@ -166,7 +166,7 @@ So if the stack contains a value like `0x4141414141414141` (from our input), the
 
 
 
-![gdb ](image-4.png)<br>
+![gdb ](images/image-4.png)<br>
 *Figure 3: gdb debugging after overflow.*
 
 #### Finding the exact offset with cyclic pattern:
@@ -261,7 +261,7 @@ ROPgadget --binary vuln | grep ": pop"
  # pop_rdi = 0X400913
 ```
 
-![ropgadgets](image-6.png)<br>
+![ropgadgets](images/image-6.png)<br>
 *Figure 4: Searching for ROPgadgets.*
 
 2. Using **Ghidra**, I was able to identify the following important addresses needed for constructing the ROP chain:
@@ -272,7 +272,7 @@ puts_at_plt = 0x400540
 back_to_main = 0x400771
 ```
 
-![ghidra](ghidra.png)<br>
+![ghidra](images/ghidra.png)<br>
 *Figure 5: PLT address of puts() on Ghidra.*
 
 #### ROP Chain:
@@ -312,7 +312,7 @@ p.recvline()  # skip input "AAAAAAAAAAAAA"
 leak = p.recvline()
 log.info(f"{hex(leak)=}")  # use log.info() for a clear output
 ```
-![running](image-8.png)<br>
+![running](images/image-8.png)<br>
 *Figure 6: Leak variable stored in little-endian format.*
 
 
@@ -403,7 +403,7 @@ so when we run the script it will open automatically the debugger.
    si
    ```
 
-![debugging](image-10.png)<br>
+![debugging](images/image-10.png)<br>
 *Figure 7: Dynamic debugging session.*
 
 At this point, `/bin/sh` is on the stack, but the exploit **fails to spawn a shell**. Why?
