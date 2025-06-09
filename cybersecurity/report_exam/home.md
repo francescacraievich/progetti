@@ -448,7 +448,7 @@ second_payload = [
 
 Now, with proper stack alignment, the call to `system("/bin/sh")` works as expected, and you get a shell! 
 
-![interactive shell](image-9.png)<br>
+![interactive shell](images/image-9.png)<br>
 *Figure 8: Interactive shell.*
 
 ---- 
