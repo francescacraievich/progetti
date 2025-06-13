@@ -16,12 +16,6 @@
 
 This attack uses stack overflow to hijack control flow and reuse libc functions instead of injecting shellcode.
 
-### Protections bypassed
-
-- **ASLR (Address Space Layout Randomization)**: bypassed by leaking a libc address and calculating function locations using known **offsets**.
-- **NX (Non-Executable Stack)**: bypassed by **reusing existing code** in the binary and libc.
-- **Stack Smashing**: used to overflow the buffer and overwrite the return address (`RIP`) with controlled values.
-
 ### Payloads
 
 - **Payload 1**: Leaks the real address of `setbuf` by calling `puts(setbuf@got)`, which goes through `puts@plt` → `puts@libc`. Then returns to main.
@@ -555,4 +549,7 @@ p.interactive()
 *  [Understanding x86 Assembly](https://tirkarp.medium.com/understanding-x86-assembly-5d7d637efb5)
 * [Wikipedia: x86 calling conventions](https://en.wikipedia.org/wiki/X86_calling_conventions)
 * [pwninit (GitHub)](https://github.com/io12/pwninit)
+* [Writeup di Joon Kim](https://joonkim0625.github.io/posts/heresalibc/)  
+* [Writeup di Darren Leonard (picoCTF - Here's a libc)](https://medium.com/@darrenleonard777/writeup-picoctf-heres-a-libc-5ddda68a5d14)
+
 
