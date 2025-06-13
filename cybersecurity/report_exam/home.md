@@ -549,7 +549,7 @@ p.interactive()
 *  [Understanding x86 Assembly](https://tirkarp.medium.com/understanding-x86-assembly-5d7d637efb5)
 * [Wikipedia: x86 calling conventions](https://en.wikipedia.org/wiki/X86_calling_conventions)
 * [pwninit (GitHub)](https://github.com/io12/pwninit)
-* [Writeup di Joon Kim](https://joonkim0625.github.io/posts/heresalibc/)  
-* [Writeup di Darren Leonard (picoCTF - Here's a libc)](https://medium.com/@darrenleonard777/writeup-picoctf-heres-a-libc-5ddda68a5d14)
+* [Writeup of Joon Kim](https://joonkim0625.github.io/posts/heresalibc/)  
+* [Writeup of Darren Leonard](https://medium.com/@darrenleonard777/writeup-picoctf-heres-a-libc-5ddda68a5d14)
 
 
