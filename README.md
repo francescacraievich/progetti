@@ -36,8 +36,9 @@ A project for the **Database** course, where I managed world data using **MySQL*
 ### 7. Cybersecurity  
 - **Demo 1**: Network scanning, SMB exploitation using EternalBlue, and system access via Meterpreter  
 - **Demo 2**: Brute-force attacks on SSH and MySQL using **Hydra**, WordPress hash extraction, and password cracking with **John the Ripper**
-- **Report Exam**: Simulation of a `ret2libc` attack on a vulnerable binary inspired by a CTF challenge.  
-  The exploit includes a **ROP chain** to gain shell access.  
+- **Report Exam**: Simulation of a `ret2libc` attack on a vulnerable binary inspired by a CTF challenge.    
+  The full report is available in [`cybersecurity/report_exam/home.md`](cybersecurity/report_exam/home.md).  
+  ▶ **Video explanation on YouTube**: [https://www.youtube.com/watch?v=87LOnpCOMJk](https://www.youtube.com/watch?v=87LOnpCOMJk) 
 - **Cybersecurity Incident Response Challenge**: Simulated ransomware attack scenario targeting a hospital's IT infrastructure, including:
   - **Task 1 - Malware Analysis**: Identified the initial infected host, exploited vulnerability, and potential attacker/C2 IP from network logs.
   - **Task 2 - Containment**: Python script to detect infected hosts and isolate them from the network.
