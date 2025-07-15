@@ -300,64 +300,72 @@ class ScalabilityTester:
         lsp_counts = [results_by_size[s]['lsp_count'] for s in sizes]
         solve_times = [results_by_size[s]['solve_time'] for s in sizes]
         
-        # Create figure with subplots
-        fig, axes = plt.subplots(2, 3, figsize=(15, 10))
+        # Create figure with subplots - INCREASED SIZE AND SPACING
+        fig, axes = plt.subplots(2, 3, figsize=(16, 10))  # Increased from (15, 10)
         fig.suptitle('Scalability Analysis of Combined IGP/MPLS-TE Routing', 
-                     fontsize=16)
+                     fontsize=18, y=0.98)  # Added y position
         
         # 1. Network size growth
         ax1 = axes[0, 0]
         ax1.plot(sizes, edges, 'b-o', markersize=8)
-        ax1.set_xlabel('Number of Nodes')
-        ax1.set_ylabel('Number of Edges')
-        ax1.set_title('Network Complexity Growth')
+        ax1.set_xlabel('Number of Nodes', fontsize=12)
+        ax1.set_ylabel('Number of Edges', fontsize=12)
+        ax1.set_title('Network Complexity Growth', fontsize=14, pad=12)
         ax1.grid(True, alpha=0.3)
+        ax1.tick_params(axis='both', labelsize=10)
         
         # 2. Utilization comparison
         ax2 = axes[0, 1]
         ax2.plot(sizes, igp_utils, 'r-s', label='IGP Only', markersize=8)
         ax2.plot(sizes, combined_utils, 'g-^', label='Combined', markersize=8)
-        ax2.set_xlabel('Number of Nodes')
-        ax2.set_ylabel('Max Link Utilization (%)')
-        ax2.set_title('Utilization Comparison')
-        ax2.legend()
+        ax2.set_xlabel('Number of Nodes', fontsize=12)
+        ax2.set_ylabel('Max Link Utilization (%)', fontsize=12)
+        ax2.set_title('Utilization Comparison', fontsize=14, pad=12)
+        ax2.legend(loc='best', fontsize=11)
         ax2.grid(True, alpha=0.3)
+        ax2.tick_params(axis='both', labelsize=10)
         
         # 3. Improvement percentage
         ax3 = axes[0, 2]
         ax3.plot(sizes, improvements, 'purple', marker='d', markersize=8)
-        ax3.set_xlabel('Number of Nodes')
-        ax3.set_ylabel('Improvement (%)')
-        ax3.set_title('Utilization Improvement')
+        ax3.set_xlabel('Number of Nodes', fontsize=12)
+        ax3.set_ylabel('Improvement (%)', fontsize=12)
+        ax3.set_title('Utilization Improvement', fontsize=14, pad=12)
         ax3.grid(True, alpha=0.3)
+        ax3.tick_params(axis='both', labelsize=10)
         
         # 4. LSP scaling
         ax4 = axes[1, 0]
         ax4.plot(sizes, lsp_counts, 'orange', marker='o', markersize=8)
-        ax4.set_xlabel('Number of Nodes')
-        ax4.set_ylabel('Number of LSPs')
-        ax4.set_title('LSP Complexity')
+        ax4.set_xlabel('Number of Nodes', fontsize=12)
+        ax4.set_ylabel('Number of LSPs', fontsize=12)
+        ax4.set_title('LSP Complexity', fontsize=14, pad=10)
         ax4.grid(True, alpha=0.3)
+        ax4.tick_params(axis='both', labelsize=10)
         
         # 5. Computational time
         ax5 = axes[1, 1]
         ax5.semilogy(sizes, solve_times, 'brown', marker='s', markersize=8)
-        ax5.set_xlabel('Number of Nodes')
-        ax5.set_ylabel('Solve Time (seconds)')
-        ax5.set_title('Computational Complexity')
+        ax5.set_xlabel('Number of Nodes', fontsize=12)
+        ax5.set_ylabel('Solve Time (seconds)', fontsize=12)
+        ax5.set_title('Computational Complexity', fontsize=14, pad=10)
         ax5.grid(True, alpha=0.3)
+        ax5.tick_params(axis='both', labelsize=10)
         
         # 6. Efficiency metric
         ax6 = axes[1, 2]
         efficiency = [imp/time for imp, time in zip(improvements, solve_times)]
         ax6.plot(sizes, efficiency, 'darkgreen', marker='*', markersize=10)
-        ax6.set_xlabel('Number of Nodes')
-        ax6.set_ylabel('Improvement per Second (%/s)')
-        ax6.set_title('Optimization Efficiency')
+        ax6.set_xlabel('Number of Nodes', fontsize=12)
+        ax6.set_ylabel('Improvement per Second (%/s)', fontsize=12)
+        ax6.set_title('Optimization Efficiency', fontsize=14, pad=10)
         ax6.grid(True, alpha=0.3)
+        ax6.tick_params(axis='both', labelsize=10)
         
-        plt.tight_layout()
-        plt.savefig('scalability_analysis_improved.png', dpi=150)
+        # INCREASED SPACING
+        plt.tight_layout(pad=2.0, h_pad=3.0, w_pad=3.0)  # Added padding parameters
+        
+        plt.savefig('scalability_analysis_improved.png', dpi=150, bbox_inches='tight')
         plt.show()
         
         # Print summary statistics

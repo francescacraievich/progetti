@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Improved Combined IGP/MPLS-TE Routing Optimization
-Better implementation following Cherubini et al. (2011) paper
+Combined IGP/MPLS-TE Routing Optimization
+Implementation following Cherubini et al. (2011) paper
 """
 
 import gurobipy as gp
@@ -434,6 +434,138 @@ def visualize_network_with_solution(G, capacities, result, optimizer):
     plt.tight_layout()
     plt.show()
 
+
+def visualize_lsp_flows(G, result, optimizer):
+    """Visualize the LSP flows in the network with improved layout"""
+    if result['status'] != 'optimal' or result['lsp_count'] == 0:
+        print("No LSP flows to visualize")
+        return
+    
+    plt.figure(figsize=(14, 10))
+    pos = nx.circular_layout(G)
+    
+    # Draw nodes
+    nx.draw_networkx_nodes(G, pos, node_color='red', node_size=800)
+    nx.draw_networkx_labels(G, pos, font_size=16, font_weight='bold', font_color='white')
+    
+    # Draw base edges (thin, background)
+    nx.draw_networkx_edges(G, pos, edge_color='lightgray', width=1, alpha=0.5)
+    
+    # Extract LSP information directly from w_values
+    edge_flows = {}
+    lsp_info = []
+    
+    # Group flows by origin
+    flows_by_origin = {}
+    for (v, arc), flow in result['w_values'].items():
+        if flow > 0.01:
+            if v not in flows_by_origin:
+                flows_by_origin[v] = []
+            flows_by_origin[v].append((arc, flow))
+    
+    # For each origin, identify LSP starting points
+    for v, flows in flows_by_origin.items():
+        # Find flows starting from v
+        for arc, flow in flows:
+            if arc[0] == v:  # This is a source arc
+                lsp_info.append({
+                    'origin': v,
+                    'first_hop': arc[1],
+                    'flow': flow,
+                    'arc': arc
+                })
+                
+                # Add to edge flows (as undirected)
+                edge = tuple(sorted([arc[0], arc[1]]))
+                edge_flows[edge] = edge_flows.get(edge, 0) + flow
+    
+    # Draw edges with flows
+    for edge, total_flow in edge_flows.items():
+        if total_flow > 0:
+            # Width proportional to flow
+            width = min(1 + total_flow / 50, 8)
+            
+            # Draw edge
+            nx.draw_networkx_edges(G, pos, [edge], 
+                                 edge_color='red', 
+                                 width=width, 
+                                 alpha=0.7)
+    
+    # Add edge labels
+    for edge, total_flow in edge_flows.items():
+        if total_flow > 0:
+            # Get positions
+            x1, y1 = pos[edge[0]]
+            x2, y2 = pos[edge[1]]
+            
+            # Calculate midpoint with offset
+            mx = (x1 + x2) / 2
+            my = (y1 + y2) / 2
+            
+            # Add perpendicular offset
+            dx = x2 - x1
+            dy = y2 - y1
+            length = np.sqrt(dx**2 + dy**2)
+            
+            if length > 0:
+                offset_x = -dy / length * 0.08
+                offset_y = dx / length * 0.08
+            else:
+                offset_x = offset_y = 0
+            
+            plt.text(mx + offset_x, my + offset_y, f"{int(total_flow)}", 
+                    fontsize=11, fontweight='bold',
+                    bbox=dict(boxstyle="round,pad=0.3", 
+                             facecolor='yellow', 
+                             alpha=0.8, 
+                             edgecolor='black'),
+                    ha='center', va='center')
+    
+    # Create summary
+    total_mpls_flow = sum(lsp['flow'] for lsp in lsp_info)
+    
+    # Sort LSPs by flow
+    sorted_lsps = sorted(lsp_info, key=lambda x: x['flow'], reverse=True)
+    
+    # Create legend text
+    legend_text = [
+        f"Total LSPs: {len(lsp_info)}",
+        f"Total MPLS Traffic: {total_mpls_flow:.0f} Mbps",
+        "─" * 25,
+        "LSP Details:"
+    ]
+    
+    # Show LSP details
+    for i, lsp in enumerate(sorted_lsps[:10], 1):
+        legend_text.append(f"{i}. {lsp['origin']} → {lsp['first_hop']}: {lsp['flow']:.0f} Mbps")
+    
+    if len(sorted_lsps) > 10:
+        legend_text.append(f"... and {len(sorted_lsps) - 10} more LSPs")
+    
+    # Add text box
+    textstr = '\n'.join(legend_text)
+    props = dict(boxstyle='round', facecolor='wheat', alpha=0.9)
+    plt.text(0.02, 0.98, textstr, transform=plt.gca().transAxes, 
+            fontsize=9, verticalalignment='top', bbox=props)
+    
+    plt.title(f'LSP Flows (Total {len(lsp_info)} LSPs, {total_mpls_flow:.0f} Mbps)', 
+              fontsize=16)
+    plt.axis('off')
+    plt.tight_layout()
+    plt.show()
+    
+    # Print LSP information
+    print("\nLSP Information:")
+    print(f"Total MPLS traffic: {total_mpls_flow:.0f} Mbps")
+    print(f"Number of LSPs: {len(lsp_info)}")
+    
+    print("\nLSP Details (sorted by bandwidth):")
+    for i, lsp in enumerate(sorted_lsps[:10], 1):
+        print(f"  {i}. LSP from {lsp['origin']} to {lsp['first_hop']}: {lsp['flow']:.0f} Mbps")
+    
+    if len(sorted_lsps) > 10:
+        print(f"  ... and {len(sorted_lsps) - 10} more LSPs")
+
 def test_different_delta_values():
     """Test the effect of different delta values on the solution"""
     print("\n" + "="*60)
@@ -455,54 +587,6 @@ def test_different_delta_values():
             print(f"{delta:10.0e} | {result['u_max_percent']:10.1f} | "
                   f"{result['lsp_count']:6d} | {result['igp_percent']:6.1f} | "
                   f"{result['mpls_percent']:7.1f}")
-
-def visualize_lsp_flows(G, result, optimizer):
-    """Visualize the LSP flows in the network"""
-    if result['status'] != 'optimal' or result['lsp_count'] == 0:
-        print("No LSP flows to visualize")
-        return
-    
-    plt.figure(figsize=(12, 10))
-    pos = nx.circular_layout(G)
-    
-    # Draw base network
-    nx.draw_networkx_nodes(G, pos, node_color='lightgray', node_size=1500)
-    nx.draw_networkx_labels(G, pos, font_size=14, font_weight='bold')
-    nx.draw_networkx_edges(G, pos, edge_color='gray', width=1, alpha=0.5)
-    
-    # Highlight source nodes with MPLS traffic
-    source_nodes = set()
-    for v in optimizer.origin_nodes:
-        for arc in optimizer.arcs:
-            if arc[0] == v and (v, arc) in result['w_values'] and result['w_values'][(v, arc)] > 0.01:
-                source_nodes.add(v)
-    
-    nx.draw_networkx_nodes(G, pos, nodelist=list(source_nodes), 
-                          node_color='red', node_size=2000)
-    
-    # Draw LSP flows
-    lsp_edges = []
-    lsp_labels = {}
-    
-    for (v, arc), flow in result['w_values'].items():
-        if arc[0] == v and flow > 0.01:  # Source edge of LSP
-            lsp_edges.append(arc)
-            lsp_labels[arc] = f"{flow:.0f}"
-    
-    # Draw LSP edges with different colors
-    nx.draw_networkx_edges(G, pos, edgelist=lsp_edges, 
-                          edge_color='red', width=3, 
-                          arrows=True, arrowsize=20, arrowstyle='->')
-    
-    # Add flow labels
-    nx.draw_networkx_edge_labels(G, pos, lsp_labels, font_size=10, 
-                                label_pos=0.3, font_color='red')
-    
-    plt.title(f"LSP Flows (Total {result['lsp_count']} LSPs, {result['total_mpls']:.0f} Mbps)", 
-             fontsize=16)
-    plt.axis('off')
-    plt.tight_layout()
-    plt.show()
 
 def main():
     print("=== Improved Combined IGP/MPLS-TE Routing Optimization ===")
@@ -556,7 +640,7 @@ def main():
     # Visualize utilization comparison
     visualize_network_with_solution(G, capacities, result, optimizer)
     
-    # Visualize LSP flows
+    # Visualize LSP flows with improved function
     visualize_lsp_flows(G, result, optimizer)
 
 if __name__ == "__main__":
