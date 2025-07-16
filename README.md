@@ -33,6 +33,13 @@ This directory includes **5 labs** on advanced topics in operating systems:
 ### 6. Database  
 A project for the **Database** course, where I managed world data using **MySQL**. It includes the **Entity-Relationship diagram** and the **data dictionary**.
 
+### 8. Mathematical Optimization
+Implementation of the **Linear Programming models for Traffic Engineering** paper (Cherubini et al., 2011) using **Python** and **Gurobi optimizer**. The project addresses network optimization for combined IGP/MPLS-TE routing in survivable networks:
+- **Traffic Flow Optimization**: Minimizes maximum link utilization while balancing IGP and MPLS-TE traffic
+- **100% Survivability**: Guarantees network operation under any single link failure scenario
+- **Scalability Analysis**: Tested on networks up to 30 nodes with polynomial time complexity O(n^2.76)
+- **Presentation**: Comprehensive analysis of the paper's contributions and experimental validation
+
 ### 7. Cybersecurity  
 - **Demo 1**: Network scanning, SMB exploitation using EternalBlue, and system access via Meterpreter  
 - **Demo 2**: Brute-force attacks on SSH and MySQL using **Hydra**, WordPress hash extraction, and password cracking with **John the Ripper**
