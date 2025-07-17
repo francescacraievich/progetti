@@ -11,7 +11,7 @@ import networkx as nx
 import time
 import matplotlib.pyplot as plt
 import random
-from mathematical_optimisation.test import CombinedRoutingOptimizer, compute_ospf_routing
+from test import CombinedRoutingOptimizer, compute_ospf_routing
 
 class NetworkGenerator:
     """Generate realistic network topologies and traffic patterns"""
