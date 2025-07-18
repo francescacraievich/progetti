@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Improved Scalability Testing for Combined IGP/MPLS-TE Routing
-Generates more realistic traffic patterns and network topologies
+Includes delta parameter analysis and network topology generation
 """
 
 import gurobipy as gp
@@ -156,13 +156,108 @@ class NetworkGenerator:
         
         return demands
 
+class DeltaAnalyzer:
+    """Analyze the effect of delta parameter on the optimization"""
+    
+    @staticmethod
+    def test_different_delta_values(optimizer, igp_util, verbose=False):
+        """Test the effect of different delta values on the solution"""
+        print("\n" + "="*60)
+        print("TESTING DIFFERENT DELTA VALUES")
+        print("="*60)
+        
+        # Test different delta values as mentioned in the paper
+        delta_values = [0, 1e-9, 1e-8, 1e-7, 1e-6, 1e-5, 1e-4, 1e-3]
+        
+        results = []
+        
+        print(f"\n{'Delta':>10} | {'Max Util %':>10} | {'LSPs':>6} | {'IGP %':>6} | {'MPLS %':>7} | {'Obj Value':>10}")
+        print("-" * 70)
+        
+        for delta in delta_values:
+            result = optimizer.solve_nominal(delta=delta, verbose=verbose)
+            if result['status'] == 'optimal':
+                results.append({
+                    'delta': delta,
+                    'result': result
+                })
+                print(f"{delta:10.0e} | {result['u_max_percent']:10.1f} | "
+                      f"{result['lsp_count']:6d} | {result['igp_percent']:6.1f} | "
+                      f"{result['mpls_percent']:7.1f} | {result['objective_value']:10.4f}")
+        
+        return results
+    
+    @staticmethod
+    def plot_delta_analysis(delta_results, title="Effect of Delta on Solution"):
+        """Plot the effect of delta on various metrics with improved layout"""
+        if not delta_results:
+            print("No results to plot")
+            return
+        
+        # Create figure with better spacing
+        fig = plt.figure(figsize=(16, 10))
+        
+        # Define grid with better spacing
+        gs = fig.add_gridspec(2, 2, hspace=0.35, wspace=0.3, 
+                             top=0.92, bottom=0.08, left=0.08, right=0.95)
+        
+        ax1 = fig.add_subplot(gs[0, 0])
+        ax2 = fig.add_subplot(gs[0, 1])
+        ax3 = fig.add_subplot(gs[1, 0])
+        ax4 = fig.add_subplot(gs[1, 1])
+        
+        deltas = [r['delta'] for r in delta_results]
+        max_utils = [r['result']['u_max_percent'] for r in delta_results]
+        lsp_counts = [r['result']['lsp_count'] for r in delta_results]
+        mpls_percents = [r['result']['mpls_percent'] for r in delta_results]
+        obj_values = [r['result']['objective_value'] for r in delta_results]
+        
+        # Plot 1: Max Utilization vs Delta
+        ax1.semilogx(deltas, max_utils, 'o-', color='blue', linewidth=2, markersize=8)
+        ax1.set_xlabel('Delta', fontsize=11)
+        ax1.set_ylabel('Max Utilization (%)', fontsize=11)
+        ax1.set_title('Maximum Utilization vs Delta', fontsize=12, pad=15)
+        ax1.grid(True, alpha=0.3)
+        ax1.tick_params(axis='both', labelsize=10)
+        
+        # Plot 2: Number of LSPs vs Delta
+        ax2.semilogx(deltas, lsp_counts, 'o-', color='red', linewidth=2, markersize=8)
+        ax2.set_xlabel('Delta', fontsize=11)
+        ax2.set_ylabel('Number of LSPs', fontsize=11)
+        ax2.set_title('Number of LSPs vs Delta', fontsize=12, pad=15)
+        ax2.grid(True, alpha=0.3)
+        ax2.tick_params(axis='both', labelsize=10)
+        
+        # Plot 3: MPLS Traffic % vs Delta
+        ax3.semilogx(deltas, mpls_percents, 'o-', color='green', linewidth=2, markersize=8)
+        ax3.set_xlabel('Delta', fontsize=11)
+        ax3.set_ylabel('MPLS Traffic (%)', fontsize=11)
+        ax3.set_title('MPLS Traffic Percentage vs Delta', fontsize=12, pad=15)
+        ax3.grid(True, alpha=0.3)
+        ax3.tick_params(axis='both', labelsize=10)
+        
+        # Plot 4: Objective Value vs Delta
+        ax4.semilogx(deltas, obj_values, 'o-', color='purple', linewidth=2, markersize=8)
+        ax4.set_xlabel('Delta', fontsize=11)
+        ax4.set_ylabel('Objective Value', fontsize=11)
+        ax4.set_title('Objective Function Value vs Delta', fontsize=12, pad=15)
+        ax4.grid(True, alpha=0.3)
+        ax4.tick_params(axis='both', labelsize=10)
+        
+        # Add super title with padding
+        fig.suptitle(title, fontsize=14, y=0.98)
+        
+        plt.savefig('delta_analysis.png', dpi=150, bbox_inches='tight')
+        plt.show()
+
 class ScalabilityTester:
     def __init__(self):
         self.results = []
         self.generator = NetworkGenerator()
+        self.delta_analyzer = DeltaAnalyzer()
     
     def test_instance(self, n_nodes, topology='waxman', traffic_pattern='gravity', 
-                     delta=1e-7, verbose=False):
+                     delta=0, verbose=False):
         """Test a single instance"""
         
         # Generate network
@@ -171,7 +266,7 @@ class ScalabilityTester:
         
         # Generate traffic with appropriate intensity
         # Increase intensity to create more congestion
-        intensity = 0.8 / np.sqrt(n_nodes / 15)
+        intensity = 0.3 / np.sqrt(n_nodes / 15)
         demands = self.generator.generate_traffic_matrix(G, traffic_pattern, intensity)
         
         # Compute routing
@@ -189,9 +284,9 @@ class ScalabilityTester:
                 print(f"  Skipping - IGP util too low: {igp_util:.1f}%")
             return None
         
-        # Solve combined routing with delta=0 for better MPLS usage
+        # Solve combined routing with specified delta
         start_time = time.time()
-        result = optimizer.solve_nominal(delta=0, verbose=False)
+        result = optimizer.solve_nominal(delta=delta, verbose=False)
         solve_time = time.time() - start_time
         
         if result['status'] == 'optimal':
@@ -207,10 +302,53 @@ class ScalabilityTester:
                 'mpls_percent': result['mpls_percent'],
                 'solve_time': solve_time,
                 'total_demand': sum(demands.values()),
-                'total_capacity': sum(capacities.values()) / 2
+                'total_capacity': sum(capacities.values()) / 2,
+                'optimizer': optimizer  # Store optimizer for delta analysis
             }
         else:
             return None
+    
+    def run_delta_analysis_for_size(self, n_nodes=20, topology='waxman', max_attempts=10):
+        """Run delta analysis for a specific network size"""
+        print(f"\n=== Delta Analysis for {n_nodes}-node {topology} network ===")
+        
+        # Try to generate a congested instance
+        for attempt in range(max_attempts):
+            result = self.test_instance(n_nodes, topology, delta=0, verbose=False)
+            
+            if result and result['igp_util'] >= 50:
+                optimizer = result['optimizer']
+                igp_util = result['igp_util']
+                
+                # Run delta analysis
+                delta_results = self.delta_analyzer.test_different_delta_values(
+                    optimizer, igp_util, verbose=False
+                )
+                
+                # Plot results
+                self.delta_analyzer.plot_delta_analysis(
+                    delta_results, 
+                    f"Delta Analysis: {n_nodes}-node {topology} network"
+                )
+                
+                return delta_results
+        
+        # If we couldn't generate a congested instance after max_attempts
+        print(f"Note: Generated instance with lower congestion after {max_attempts} attempts")
+        # Use the last result anyway
+        if result:
+            optimizer = result['optimizer']
+            igp_util = result['igp_util']
+            delta_results = self.delta_analyzer.test_different_delta_values(
+                optimizer, igp_util, verbose=False
+            )
+            self.delta_analyzer.plot_delta_analysis(
+                delta_results, 
+                f"Delta Analysis: {n_nodes}-node {topology} network (IGP util: {igp_util:.1f}%)"
+            )
+            return delta_results
+        
+        return None
     
     def run_size_scaling_test(self, sizes=[8, 10, 12, 15, 20, 25, 30], 
                              runs_per_size=3):
@@ -242,9 +380,9 @@ class ScalabilityTester:
                 # Average results for this size
                 avg_result = {}
                 for key in size_results[0].keys():
-                    if isinstance(size_results[0][key], (int, float)):
+                    if key != 'optimizer' and isinstance(size_results[0][key], (int, float)):
                         avg_result[key] = np.mean([r[key] for r in size_results])
-                    else:
+                    elif key != 'optimizer':
                         avg_result[key] = size_results[0][key]
                 
                 results_by_size[size] = avg_result
@@ -268,22 +406,6 @@ class ScalabilityTester:
                       f"{result['igp_util']:6.1f} | {result['combined_util']:6.1f} | "
                       f"{result['improvement']:6.1f} | {result['lsp_count']:5d}")
     
-    def run_traffic_pattern_comparison(self, n_nodes=20):
-        """Compare different traffic patterns"""
-        print(f"\n=== Traffic Pattern Comparison (n={n_nodes}) ===")
-        patterns = ['gravity', 'uniform', 'hotspot']
-        
-        print(f"{'Pattern':>10} | {'Flows':>6} | {'IGP%':>6} | "
-              f"{'Comb%':>6} | {'Impr%':>6} | {'LSPs':>5}")
-        print("-" * 55)
-        
-        for pattern in patterns:
-            result = self.test_instance(n_nodes, traffic_pattern=pattern)
-            if result:
-                print(f"{pattern:>10} | {result['commodities']:6d} | "
-                      f"{result['igp_util']:6.1f} | {result['combined_util']:6.1f} | "
-                      f"{result['improvement']:6.1f} | {result['lsp_count']:5d}")
-    
     def plot_results(self, results_by_size):
         """Create comprehensive plots of scalability results"""
         if not results_by_size:
@@ -300,10 +422,10 @@ class ScalabilityTester:
         lsp_counts = [results_by_size[s]['lsp_count'] for s in sizes]
         solve_times = [results_by_size[s]['solve_time'] for s in sizes]
         
-        # Create figure with subplots - INCREASED SIZE AND SPACING
-        fig, axes = plt.subplots(2, 3, figsize=(16, 10))  # Increased from (15, 10)
+        # Create figure with subplots
+        fig, axes = plt.subplots(2, 3, figsize=(16, 10))
         fig.suptitle('Scalability Analysis of Combined IGP/MPLS-TE Routing', 
-                     fontsize=18, y=0.98)  # Added y position
+                     fontsize=18, y=0.98)
         
         # 1. Network size growth
         ax1 = axes[0, 0]
@@ -362,10 +484,8 @@ class ScalabilityTester:
         ax6.grid(True, alpha=0.3)
         ax6.tick_params(axis='both', labelsize=10)
         
-        # INCREASED SPACING
-        plt.tight_layout(pad=2.0, h_pad=3.0, w_pad=3.0)  # Added padding parameters
-        
-        plt.savefig('scalability_analysis_improved.png', dpi=150, bbox_inches='tight')
+        plt.tight_layout(pad=2.0, h_pad=3.0, w_pad=3.0)
+        plt.savefig('scalability_analysis.png', dpi=150, bbox_inches='tight')
         plt.show()
         
         # Print summary statistics
@@ -383,23 +503,27 @@ class ScalabilityTester:
             print(f"Time complexity: O(n^{complexity:.2f})")
 
 def main():
-    print("=== Improved Scalability Testing for Combined Routing ===\n")
+    print("=== Scalability and Delta Parameter Analysis ===\n")
     
     tester = ScalabilityTester()
     
-    # Test 1: Size scaling
+    # Test 1: Delta analysis for different network sizes
+    print("Phase 1: Delta Parameter Analysis")
+    delta_results_15 = tester.run_delta_analysis_for_size(n_nodes=15)
+    delta_results_25 = tester.run_delta_analysis_for_size(n_nodes=25)
+    
+    # Test 2: Size scaling with optimal delta
+    print("\nPhase 2: Network Size Scaling")
     results_by_size = tester.run_size_scaling_test(
         sizes=[8, 10, 12, 15, 18, 20, 25, 30],
         runs_per_size=3
     )
     
-    # Test 2: Topology comparison
+    # Test 3: Topology comparison
+    print("\nPhase 3: Topology Analysis")
     tester.run_topology_comparison(n_nodes=20)
     
-    # Test 3: Traffic pattern comparison  
-    tester.run_traffic_pattern_comparison(n_nodes=20)
-    
-    # Plot results
+    # Plot scalability results
     tester.plot_results(results_by_size)
 
 if __name__ == "__main__":

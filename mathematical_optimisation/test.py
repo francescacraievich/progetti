@@ -895,7 +895,7 @@ def main():
     print("Following Cherubini et al. (2011) - Equations 6 & 7")
     
     # Load Atlanta network
-    G, capacities, demands = parse_atlanta_xml("atlanta.xml")
+    G, capacities, demands = parse_atlanta_xml("mathematical_optimisation/atlanta.xml")
     
     if G is None:
         print("Failed to load Atlanta network")
