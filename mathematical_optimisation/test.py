@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Complete Combined IGP/MPLS-TE Routing Optimization
-Implementation of Cherubini et al. (2011) paper including survivability
+Combined IGP/MPLS-TE Routing Optimization
+Implementation following Cherubini et al. (2011) paper with full survivability
 """
 
 import gurobipy as gp
@@ -9,7 +9,6 @@ from gurobipy import GRB
 import numpy as np
 import networkx as nx
 import matplotlib.pyplot as plt
-import time
 
 class CombinedRoutingOptimizer:
     def __init__(self, graph, capacities, demands, routing_matrix):
@@ -215,9 +214,10 @@ class CombinedRoutingOptimizer:
         else:
             return {'status': 'infeasible'}
     
-    def solve_with_survivability(self, failure_scenarios=None, delta=1e-7, verbose=False):
+    def solve_with_survivability(self, failure_scenarios=None, delta=0, verbose=False):
         """
-        Solve with survivability constraints (Equation 7) - COMPLETE implementation
+        Solve with survivability constraints using CORRECTED Equation 7 from the paper
+        FIXED: Now uses ≤ u_max * capacity as per the paper
         """
         model = gp.Model("Combined_Routing_Survivable")
         if not verbose:
@@ -228,7 +228,7 @@ class CombinedRoutingOptimizer:
             failure_scenarios = list(self.G.edges())
         
         # Precompute failure routing matrices
-        print(f"Precomputing routing for {len(failure_scenarios)} failure scenarios...")
+        print(f"Precomputing routing for {len(failure_scenarios)} single link failure scenarios...")
         failure_routing_matrices = {}
         for link in failure_scenarios:
             failure_routing_matrices[link] = self.compute_failure_routing_matrix(link)
@@ -247,23 +247,6 @@ class CombinedRoutingOptimizer:
         for v in self.origin_nodes:
             for arc in self.arcs:
                 w_vars[v, arc] = model.addVar(name=f"w_{v}_{arc[0]}_{arc[1]}", lb=0)
-        
-        # COMPLETE IMPLEMENTATION: Rerouting fractions for MPLS traffic
-        # These represent how MPLS traffic is distributed when a link fails
-        x_reroute_vars = {}
-        for failed_link in failure_scenarios:
-            # For flow on the failed link in both directions
-            for direction in ['plus', 'minus']:
-                # Create variables for how this flow is redistributed
-                for arc in self.arcs:
-                    # Skip the failed arc itself
-                    if arc == failed_link or arc == (failed_link[1], failed_link[0]):
-                        continue
-                    
-                    x_reroute_vars[(failed_link, direction, arc)] = model.addVar(
-                        name=f"x_reroute_{failed_link[0]}_{failed_link[1]}_{direction}_{arc[0]}_{arc[1]}", 
-                        lb=0, ub=1
-                    )
         
         # Objective function (Equation 6)
         obj = u_max
@@ -322,83 +305,50 @@ class CombinedRoutingOptimizer:
                             rhs += self.demands[f] - is_vars[f]
                     model.addConstr(expr == rhs, name=f"flow_cons_{v}_{i}")
         
-        # SURVIVABILITY CONSTRAINTS (Complete Equation 7)
-        for failed_link in failure_scenarios:
+        # SURVIVABILITY CONSTRAINTS (Equation 7 from paper)
+        for l_idx, failed_link in enumerate(failure_scenarios):
             failure_routing = failure_routing_matrices[failed_link]
             
-            # Flow conservation for rerouting: flow from failed link must be redistributed
-            # For l+ direction (failed_link[0] -> failed_link[1])
-            if failed_link in self.arcs:
-                # Total MPLS flow on l+
-                total_flow_plus = gp.LinExpr()
-                for v in self.origin_nodes:
-                    total_flow_plus += w_vars[v, failed_link]
-                
-                # This flow must be redistributed
-                redistrib_plus = gp.LinExpr()
-                for arc in self.arcs:
-                    if arc != failed_link and arc != (failed_link[1], failed_link[0]):
-                        if (failed_link, 'plus', arc) in x_reroute_vars:
-                            redistrib_plus += x_reroute_vars[(failed_link, 'plus', arc)]
-                
-                # Conservation: all flow must be redistributed
-                model.addConstr(redistrib_plus == 1.0, 
-                               name=f"reroute_conservation_{failed_link[0]}_{failed_link[1]}_plus")
+            # Get the two directed arcs for the failed link
+            l_plus = failed_link  # (p,q)
+            l_minus = (failed_link[1], failed_link[0])  # (q,p)
             
-            # For l- direction (failed_link[1] -> failed_link[0])
-            failed_link_reverse = (failed_link[1], failed_link[0])
-            if failed_link_reverse in self.arcs:
-                # Total MPLS flow on l-
-                total_flow_minus = gp.LinExpr()
-                for v in self.origin_nodes:
-                    total_flow_minus += w_vars[v, failed_link_reverse]
-                
-                # This flow must be redistributed
-                redistrib_minus = gp.LinExpr()
-                for arc in self.arcs:
-                    if arc != failed_link and arc != failed_link_reverse:
-                        if (failed_link, 'minus', arc) in x_reroute_vars:
-                            redistrib_minus += x_reroute_vars[(failed_link, 'minus', arc)]
-                
-                # Conservation: all flow must be redistributed
-                model.addConstr(redistrib_minus == 1.0, 
-                               name=f"reroute_conservation_{failed_link[0]}_{failed_link[1]}_minus")
-            
-            # Capacity constraints under failure
             for arc in self.arcs:
                 # Skip if arc is the failed link
-                if arc == failed_link or arc == failed_link_reverse:
+                if arc == l_plus or arc == l_minus:
                     continue
                 
                 if arc in self.capacities and self.capacities[arc] > 0:
                     expr = gp.LinExpr()
                     
-                    # IS-IS/OSPF traffic with failed routing
+                    # First term: Σ_f χ_{ij}^{f,l} * is^f
                     for f in self.commodities:
                         if (f, arc) in failure_routing:
                             expr += is_vars[f] * failure_routing[f, arc]
                     
-                    # MPLS-TE traffic (non-failed)
+                    # Second term: Σ_v w_{ij}^v  
                     for v in self.origin_nodes:
                         expr += w_vars[v, arc]
                     
-                    # Rerouted MPLS traffic from l+
-                    if (failed_link, 'plus', arc) in x_reroute_vars and failed_link in self.arcs:
-                        rerouted_plus = gp.LinExpr()
-                        for v in self.origin_nodes:
-                            rerouted_plus += w_vars[v, failed_link]
-                        expr += x_reroute_vars[(failed_link, 'plus', arc)] * rerouted_plus
+                    # Third term: Σ_v χ_{ij}^{l+,l} * w_{l+}^v
+                    if l_plus in self.arcs:
+                        # Create commodity for l+ = (p,q)
+                        f_plus = (l_plus[0], l_plus[1])
+                        if f_plus in self.commodities and (f_plus, arc) in failure_routing:
+                            for v in self.origin_nodes:
+                                expr += failure_routing[f_plus, arc] * w_vars[v, l_plus]
                     
-                    # Rerouted MPLS traffic from l-
-                    if (failed_link, 'minus', arc) in x_reroute_vars and failed_link_reverse in self.arcs:
-                        rerouted_minus = gp.LinExpr()
-                        for v in self.origin_nodes:
-                            rerouted_minus += w_vars[v, failed_link_reverse]
-                        expr += x_reroute_vars[(failed_link, 'minus', arc)] * rerouted_minus
+                    # Fourth term: Σ_v χ_{ij}^{l-,l} * w_{l-}^v
+                    if l_minus in self.arcs:
+                        # Create commodity for l- = (q,p)
+                        f_minus = (l_minus[0], l_minus[1])
+                        if f_minus in self.commodities and (f_minus, arc) in failure_routing:
+                            for v in self.origin_nodes:
+                                expr += failure_routing[f_minus, arc] * w_vars[v, l_minus]
                     
-                    # Must remain under capacity even with failure
+                    #The constraint uses ≤ u_max * capacity 
                     model.addConstr(expr <= u_max * self.capacities[arc], 
-                                   name=f"surv_{failed_link[0]}_{failed_link[1]}_{arc[0]}_{arc[1]}")
+                                   name=f"surv_l{l_idx}_{arc[0]}_{arc[1]}")
         
         # Optimize
         model.optimize()
@@ -422,12 +372,6 @@ class CombinedRoutingOptimizer:
                                  for arc in self.arcs 
                                  if w_vars[v, arc].X > 0.01}
             
-            # Store rerouting fractions for analysis
-            result['x_reroute_values'] = {}
-            for key, var in x_reroute_vars.items():
-                if var.X > 0.01:
-                    result['x_reroute_values'][key] = var.X
-            
             # Calculate traffic split
             total_demand = sum(self.demands.values())
             total_igp = sum(result['is_values'].values())
@@ -435,7 +379,7 @@ class CombinedRoutingOptimizer:
             result['total_mpls'] = total_demand - total_igp
             result['igp_percent'] = (total_igp / total_demand * 100) if total_demand > 0 else 0
             result['mpls_percent'] = 100 - result['igp_percent']
-
+            
             # Count LSPs
             lsp_count = 0
             lsp_details = []
@@ -450,12 +394,14 @@ class CombinedRoutingOptimizer:
             
             return result
         else:
-            return {'status': 'infeasible'}
+            return {'status': 'infeasible', 'model_status': model.status}
     
     def analyze_solution(self, result, igp_util):
         """Analyze and print detailed solution information"""
         if result['status'] != 'optimal':
             print("No optimal solution found!")
+            if 'model_status' in result:
+                print(f"Model status: {result['model_status']}")
             return
         
         print(f"\n{'='*60}")
@@ -685,11 +631,12 @@ def visualize_network_with_solution(G, capacities, result, optimizer, pos=None):
     ax2.axis('off')
     
     # Add overall statistics
-    fig.text(0.5, 0.02, f"Total Demand: {sum(optimizer.demands.values()):.0f} Mbps | "
-                       f"IGP Traffic: {result['total_igp']:.0f} Mbps ({result['igp_percent']:.1f}%) | "
-                       f"MPLS Traffic: {result['total_mpls']:.0f} Mbps ({result['mpls_percent']:.1f}%) | "
-                       f"LSPs: {result['lsp_count']}",
-            ha='center', fontsize=12, bbox=dict(boxstyle="round,pad=0.3", facecolor="lightgray"))
+    if result['status'] == 'optimal':
+        fig.text(0.5, 0.02, f"Total Demand: {sum(optimizer.demands.values()):.0f} Mbps | "
+                           f"IGP Traffic: {result['total_igp']:.0f} Mbps ({result['igp_percent']:.1f}%) | "
+                           f"MPLS Traffic: {result['total_mpls']:.0f} Mbps ({result['mpls_percent']:.1f}%) | "
+                           f"LSPs: {result['lsp_count']}",
+                ha='center', fontsize=12, bbox=dict(boxstyle="round,pad=0.3", facecolor="lightgray"))
     
     plt.tight_layout()
     plt.show()
@@ -835,22 +782,27 @@ def visualize_failure_scenario(G, capacities, optimizer, failed_link, result_wit
             if flow_arc == arc:
                 load += flow
         
-        # Add rerouted MPLS traffic if we have rerouting information
-        if 'x_reroute_values' in result_with_survivability:
-            # Check for rerouted traffic from the failed link
-            for (link, direction, dest_arc), fraction in result_with_survivability['x_reroute_values'].items():
-                if link == failed_link and dest_arc == arc:
-                    # Add the rerouted portion
-                    if direction == 'plus':
-                        # Traffic that was on failed_link
-                        for (v, orig_arc), orig_flow in result_with_survivability['w_values'].items():
-                            if orig_arc == failed_link:
-                                load += orig_flow * fraction
-                    elif direction == 'minus':
-                        # Traffic that was on reverse of failed_link
-                        for (v, orig_arc), orig_flow in result_with_survivability['w_values'].items():
-                            if orig_arc == (failed_link[1], failed_link[0]):
-                                load += orig_flow * fraction
+        # Add rerouted MPLS traffic from the failed link
+        # This is the key part - MPLS traffic on failed link must be rerouted
+        failed_commodity_plus = (failed_link[0], failed_link[1])
+        failed_commodity_minus = (failed_link[1], failed_link[0])
+        
+        # Reroute MPLS traffic that was on the failed link
+        for v in optimizer.origin_nodes:
+            # Traffic on failed_link
+            if (v, failed_link) in result_with_survivability['w_values']:
+                mpls_on_failed = result_with_survivability['w_values'][(v, failed_link)]
+                # This traffic is rerouted according to IGP routing for the failed commodity
+                if failed_commodity_plus in optimizer.commodities and (failed_commodity_plus, arc) in failure_routing:
+                    load += mpls_on_failed * failure_routing[failed_commodity_plus, arc]
+            
+            # Traffic on reverse of failed_link
+            failed_reverse = (failed_link[1], failed_link[0])
+            if (v, failed_reverse) in result_with_survivability['w_values']:
+                mpls_on_failed = result_with_survivability['w_values'][(v, failed_reverse)]
+                # This traffic is rerouted according to IGP routing for the failed commodity
+                if failed_commodity_minus in optimizer.commodities and (failed_commodity_minus, arc) in failure_routing:
+                    load += mpls_on_failed * failure_routing[failed_commodity_minus, arc]
         
         if arc in capacities and capacities[arc] > 0:
             arc_utils_failure[arc] = (load / capacities[arc]) * 100
@@ -919,61 +871,79 @@ def visualize_failure_scenario(G, capacities, optimizer, failed_link, result_wit
     plt.tight_layout()
     plt.show()
 
-def test_different_delta_values():
-    """Test the effect of different delta values on the solution"""
+def debug_survivability_issue():
+    """Debug why survivability is infeasible"""
     print("\n" + "="*60)
-    print("TESTING DIFFERENT DELTA VALUES")
+    print("DEBUGGING SURVIVABILITY INFEASIBILITY")
     print("="*60)
     
     G, capacities, demands, routing_matrix = create_test_instance()
     optimizer = CombinedRoutingOptimizer(G, capacities, demands, routing_matrix)
     
-    # Test different delta values
-    delta_values = [0, 1e-8, 1e-7, 1e-6, 1e-5, 1e-4, 1e-3]
+    # Check individual link failures
+    failure_scenarios = list(G.edges())
     
-    print(f"\n{'Delta':>10} | {'Max Util %':>10} | {'LSPs':>6} | {'IGP %':>6} | {'MPLS %':>7}")
-    print("-" * 50)
+    print(f"\nTesting each single link failure individually:")
+    infeasible_links = []
     
-    for delta in delta_values:
-        result = optimizer.solve_nominal(delta=delta)
+    for i, failed_link in enumerate(failure_scenarios):
+        print(f"  Testing failure of link {failed_link}...")
+        
+        result = optimizer.solve_with_survivability(
+            failure_scenarios=[failed_link], 
+            delta=0, 
+            verbose=False
+        )
+        
         if result['status'] == 'optimal':
-            print(f"{delta:10.0e} | {result['u_max_percent']:10.1f} | "
-                  f"{result['lsp_count']:6d} | {result['igp_percent']:6.1f} | "
-                  f"{result['mpls_percent']:7.1f}")
-
-def test_survivability():
-    """Test survivability constraints"""
-    print("\n" + "="*60)
-    print("TESTING SURVIVABILITY")
-    print("="*60)
+            print(f"    Feasible - Max util: {result['u_max_percent']:.1f}%")
+        else:
+            print(f"     INFEASIBLE")
+            infeasible_links.append(failed_link)
     
-    G, capacities, demands, routing_matrix = create_test_instance()
-    optimizer = CombinedRoutingOptimizer(G, capacities, demands, routing_matrix)
-    
-    # Test with different numbers of failure scenarios
-    print("\nTesting with subset of critical links:")
-    critical_links = [('g', 'e'), ('d', 'g'), ('f', 'g')]  # High traffic links
-    
-    print(f"\nConsidering failures of: {critical_links}")
-    
-    start_time = time.time()
-    result = optimizer.solve_with_survivability(
-        failure_scenarios=critical_links,
-        delta=1e-7,
-        verbose=True
-    )
-    solve_time = time.time() - start_time
-    
-    if result['status'] == 'optimal':
-        print(f"\nSolution found in {solve_time:.2f} seconds")
-        print(f"Max utilization with survivability: {result['u_max_percent']:.1f}%")
-        print(f"Number of LSPs: {result['lsp_count']}")
+    if infeasible_links:
+        print(f"\n Infeasible single link failures: {infeasible_links}")
+        print("These links are critical and cannot be protected with current capacity")
+        
+        # Try increasing capacity
+        print(f"\nTrying with increased capacity...")
+        # Increase capacity by 50%
+        increased_capacities = {k: int(v * 1.5) for k, v in capacities.items()}
+        
+        G_new, _, _, _ = create_test_instance()
+        optimizer_new = CombinedRoutingOptimizer(G_new, increased_capacities, demands, routing_matrix)
+        
+        result_increased = optimizer_new.solve_with_survivability(delta=0, verbose=False)
+        if result_increased['status'] == 'optimal':
+            print(f"SUCCESS with +50% capacity: Max util {result_increased['u_max_percent']:.1f}%")
+            return optimizer_new, increased_capacities, result_increased
+        else:
+            print("Still infeasible with +50% capacity")
     else:
-        print("No feasible solution with survivability constraints!")
+        print(f"\n All individual link failures are feasible!")
+        print("The issue might be with solving all failures simultaneously")
+        
+        # Try progressive approach
+        print(f"\nTrying progressive approach:")
+        for num_links in [2, 3, 5, len(failure_scenarios)]:
+            test_links = failure_scenarios[:num_links]
+            result = optimizer.solve_with_survivability(
+                failure_scenarios=test_links, 
+                delta=0, 
+                verbose=False
+            )
+            
+            if result['status'] == 'optimal':
+                print(f"  Feasible with {num_links} links: Max util {result['u_max_percent']:.1f}%")
+            else:
+                print(f"   Infeasible with {num_links} links")
+                break
+    
+    return None, None, None
 
 def main():
-    print("=== Complete Combined IGP/MPLS-TE Routing Optimization ===")
-    print("Implementation with Survivability (Equation 7)")
+    print("=== Combined IGP/MPLS-TE Routing Optimization with Survivability ===")
+    print("Implementation of Cherubini et al. (2011) - Equations 6 & 7")
     
     # Create test instance
     G, capacities, demands, routing_matrix = create_test_instance()
@@ -998,10 +968,7 @@ def main():
     # Store position for consistent layouts
     pos = nx.circular_layout(G)
     
-    # Test with different delta values
-    test_different_delta_values()
-    
-    # Solve nominal case with delta=0 as recommended by paper
+    # Solve nominal case with delta=0 (to get many LSPs like original)
     print(f"\n{'='*60}")
     print("SOLVING NOMINAL CASE (No Failures)")
     print("="*60)
@@ -1009,45 +976,66 @@ def main():
     result_nominal = optimizer.solve_nominal(delta=0, verbose=True)
     optimizer.analyze_solution(result_nominal, igp_util)
     
-    # Visualize nominal solution
+    # Visualize comparison IGP vs Combined
     visualize_network_with_solution(G, capacities, result_nominal, optimizer, pos)
     
     # Visualize LSP flows for nominal
     visualize_lsp_flows(G, result_nominal, optimizer, pos)
     
-    # Test survivability
-    test_survivability()
+    # Debug survivability issue
+    optimizer_fixed, capacities_fixed, result_survivable = debug_survivability_issue()
     
-    # Compare nominal vs survivable solutions
+    # Try with original capacities first
     print(f"\n{'='*60}")
-    print("COMPARISON: NOMINAL vs SURVIVABLE")
+    print("SOLVING WITH SURVIVABILITY (All single link failures)")
     print("="*60)
     
-    # Solve with all link failures with delta=1e-7
-    print("\nSolving with ALL link failures considered...")
-    start_time = time.time()
-    result_survivable = optimizer.solve_with_survivability(delta=1e-7, verbose=False)
-    solve_time = time.time() - start_time
+    result_survivable_orig = optimizer.solve_with_survivability(delta=0, verbose=True)
     
-    if result_survivable['status'] == 'optimal':
-        print(f"\nSolution found in {solve_time:.2f} seconds")
-        print(f"\nComparison:")
+    if result_survivable_orig['status'] == 'optimal':
+        print(" Original capacity works!")
+        result_to_use = result_survivable_orig
+        optimizer_to_use = optimizer
+        capacities_to_use = capacities
+    elif optimizer_fixed and result_survivable and result_survivable['status'] == 'optimal':
+        print(" Using increased capacity solution")
+        result_to_use = result_survivable
+        optimizer_to_use = optimizer_fixed
+        capacities_to_use = capacities_fixed
+    else:
+        print(" No survivable solution found")
+        return
+    
+    if result_to_use['status'] == 'optimal':
+        optimizer_to_use.analyze_solution(result_to_use, igp_util)
+        
+           
+        # Visualize LSP flows for survivable
+        visualize_lsp_flows(G, result_to_use, optimizer_to_use, pos)
+        
+        # Test different failure scenarios 
+        critical_links = [('g', 'd'), ('d', 'g'), ('f', 'g')]
+        print(f"\nTesting individual failure scenarios:")
+        for failed_link in critical_links:
+            print(f"Visualizing failure scenario: link {failed_link} fails...")
+            visualize_failure_scenario(G, capacities_to_use, optimizer_to_use, failed_link, result_to_use, pos)
+        
+        # Show comparison
+        print(f"\n{'='*60}")
+        print("COMPARISON: NOMINAL vs SURVIVABLE")
+        print("="*60)
         print(f"  {'':20} | {'Nominal':>10} | {'Survivable':>12}")
         print(f"  {'-'*20} | {'-'*10} | {'-'*12}")
-        print(f"  {'Max Utilization %':20} | {result_nominal['u_max_percent']:10.1f} | {result_survivable['u_max_percent']:12.1f}")
-        print(f"  {'Number of LSPs':20} | {result_nominal['lsp_count']:10d} | {result_survivable['lsp_count']:12d}")
-        print(f"  {'MPLS Traffic %':20} | {result_nominal['mpls_percent']:10.1f} | {result_survivable['mpls_percent']:12.1f}")
-        print(f"  {'Objective Value':20} | {result_nominal['objective_value']:10.4f} | {result_survivable['objective_value']:12.4f}")
+        print(f"  {'Max Utilization %':20} | {result_nominal['u_max_percent']:10.1f} | {result_to_use['u_max_percent']:12.1f}")
+        print(f"  {'Number of LSPs':20} | {result_nominal['lsp_count']:10d} | {result_to_use['lsp_count']:12d}")
+        print(f"  {'MPLS Traffic %':20} | {result_nominal['mpls_percent']:10.1f} | {result_to_use['mpls_percent']:12.1f}")
         
-        # Visualize LSP flows for survivable
-        visualize_lsp_flows(G, result_survivable, optimizer, pos)
-        
-        # Visualize a specific failure scenario WITH survivability solution
-        print("\nVisualizing failure scenario with survivability: link ('g', 'd') fails...")
-        visualize_failure_scenario(G, capacities, optimizer, ('g', 'd'), result_survivable, pos)
-        
+        if capacities_to_use != capacities:
+            print(f"  {'Capacity Increase':20} | {'0%':>10} | {'+50%':>12}")
     else:
-        print("No feasible solution with full survivability!")
+        print("\nNo feasible solution found with survivability constraints!")
+        print("This may indicate that the network cannot handle all single link failures")
+        print("with the current capacity.")
 
 if __name__ == "__main__":
     main()
