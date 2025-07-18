@@ -218,7 +218,7 @@ class CombinedRoutingOptimizer:
     
     def solve_with_survivability(self, failure_scenarios=None, delta=0, verbose=False):
         """
-        Solve with survivability constraints using CORRECTED Equation 7 from the paper
+        Solve with survivability constraints using Equation 7 from the paper
         """
         model = gp.Model("Combined_Routing_Survivable")
         if not verbose:
