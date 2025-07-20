@@ -22,7 +22,6 @@ This project implements **linear programming models** for combined IGP/MPLS-TE r
 The script `test.py` allows you to:
 
 * Load and parse **real network topologies** (Atlanta, GÉANT)
-* Run optimization with **different δ values**
 * Compare **IGP-only vs. combined routing performance**
 * Compute and visualize the **improvement in maximum link utilization**
 * Generate **network visualization plots**
@@ -32,14 +31,6 @@ The script `test.py` allows you to:
 ```bash
 python test.py
 ```
-
-When executed, this script will:
-
-1. Load the Atlanta and GÉANT network topologies
-2. Compute IGP-only routing utilization
-3. Optimize combined IGP/MPLS-TE routing
-4. Show the resulting improvement in maximum link utilization
-5. Automatically generate and display network visualization plots
 
 ---
 
