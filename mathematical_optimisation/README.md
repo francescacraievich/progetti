@@ -50,14 +50,6 @@ The script `scalability.py` performs scalability and sensitivity testing on both
 python scalability.py
 ```
 
-When executed, this script will run:
-
-* **Phase 0:** Test real networks (Atlanta, GÉANT)
-* **Phase 0.1:** Delta analysis on real networks
-* **Phase 1:** Delta parameter analysis on synthetic networks
-* **Phase 2:** Network size scaling (8–30 nodes)
-* **Phase 3:** Topology comparison (Waxman, BA, ER, WS)
-* **Phase 4:** Real vs. synthetic network comparison
 
 ---
 
