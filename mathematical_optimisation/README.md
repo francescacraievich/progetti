@@ -43,7 +43,7 @@ When executed, this script will:
 
 ---
 
-### \*\*2. Scalability Analysis (`scalability.py`)
+### 2. Scalability Analysis (`scalability.py`)
 
 The script `scalability.py` performs scalability and sensitivity testing on both real and synthetic networks:
 
@@ -94,24 +94,6 @@ This implementation is based on:
 > *"Linear programming models for traffic engineering in 100% survivable networks under combined IS-IS/OSPF and MPLS-TE"*,
 > Computers & Operations Research, Volume 38, Issue 12, 2011, Pages 1805–1815.
 
----
-
-## **How to Run**
-
-1. Clone the repository
-2. Install dependencies (e.g., `numpy`, `matplotlib`, `networkx`, `pulp`)
-3. Run basic tests:
-
-   ```bash
-   python test.py
-   ```
-4. Run scalability analysis:
-
-   ```bash
-   python scalability.py
-   ```
-
----
 
 ## **License**
 
