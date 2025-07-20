@@ -17,7 +17,7 @@ This project implements **linear programming models** for combined IGP/MPLS-TE r
 
 ## **Testing Capabilities**
 
-### \*\*1. Basic Testing (`test.py`)
+### 1. Basic Testing (`test.py`)
 
 The script `test.py` allows you to:
 
