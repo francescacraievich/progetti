@@ -32,8 +32,8 @@ def main():
     # Test 2: Size scaling with optimal delta
     print("\nPhase 2: Network Size Scaling")
     results_by_size = tester.run_size_scaling_test(
-        sizes=[8, 10, 12, 15, 18, 20, 25, 30],
-        runs_per_size=3
+        sizes=[5, 10, 15, 20, 25, 30, 40, 50, 75, 100],
+        runs_per_size=10
     )
     
     # Test 3: Topology comparison
