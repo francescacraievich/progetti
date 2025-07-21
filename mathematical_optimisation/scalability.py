@@ -1,16 +1,14 @@
 #!/usr/bin/env python3
 """
 Scalability Testing for Combined IGP/MPLS-TE Routing
-
 """
+
 import sys
 import os
 
-# Aggiungi src al path
 src_path = os.path.join(os.path.dirname(__file__), 'src')
 sys.path.insert(0, src_path)
 
-# Import dalle classi nella cartella src
 from scalability_tester import ScalabilityTester
 
 def main():
