@@ -6,8 +6,8 @@ Security audit project completed as part of Google Cybersecurity Professional Ce
 Conducted an internal security audit for Botium Toys using NIST CSF framework.
 
 ## Contents
-- `original-documents/` - Original assignment documents from Coursera
-- `completed-audit/` - My completed audit checklist
+- `original_documents/` - Original assignment documents from Coursera
+- `completed_audit/` - My completed audit checklist
 
 ## Key Findings
 - Risk Score: 8/10
