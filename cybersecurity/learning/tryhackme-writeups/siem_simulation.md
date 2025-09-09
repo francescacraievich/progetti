@@ -74,10 +74,6 @@ Results:
 └── City: Zhenjiang, Jiangsu
 ```
 
-**Additional OSINT Sources Referenced:**
-- AbuseIPDB
-- Cisco Talos Intelligence
-- (Note: These would be used in real-world scenarios)
 
 ## Attack Vector Analysis
 
@@ -153,10 +149,6 @@ Results:
 - **Documentation:** Maintaining clear incident records
 - **Escalation:** Knowing when to involve senior analysts
 
-### Cybersecurity Frameworks Applied
-- **NIST Incident Response:** Preparation → Detection → Analysis → Containment
-- **MITRE ATT&CK:** Tactic and technique identification
-- **Cyber Kill Chain:** Understanding attack progression
 
 
 ## References
