@@ -1,3 +1,0 @@
-data/output/osm/vienna.osm.pbf filter=lfs diff=lfs merge=lfs -text
-data/output/osm/graz.osm.pbf filter=lfs diff=lfs merge=lfs -text
-data/output/osm/linz.osm.pbf filter=lfs diff=lfs merge=lfs -text

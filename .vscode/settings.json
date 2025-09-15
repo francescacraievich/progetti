@@ -1,0 +1,5 @@
+{
+    "python.analysis.extraPaths": [
+        "./mathematical_optimisation/src"
+    ]
+}
