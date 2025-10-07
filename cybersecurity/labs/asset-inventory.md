@@ -1,4 +1,4 @@
-# Home Office Network Asset Inventory 🔒
+# Home Office Network Asset Inventory
 
 ## Project Overview
 This project demonstrates **Asset Management** principles for a small business home office network. The inventory identifies and classifies network-connected devices based on their security sensitivity levels.
