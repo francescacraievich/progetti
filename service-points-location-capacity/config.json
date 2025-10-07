@@ -1,0 +1,24 @@
+{
+  "instance_type": "synthetic",
+  "grid_size": 10,
+  "seed": 42,
+  "demand_range": [0.5, 10.0],
+  "service_radius": 600,
+  
+  "capacities": [30, 60, 90],
+  
+  "model_params": {
+    "pickup_probability": 0.5,
+    "rejection_cost": 10,
+    "setup_base_cost": 10,
+    "setup_var_cost": 0.1667,
+    "n_breakpoints": 12
+  },
+  
+  "time_limit": 3600,
+  "mip_gap": 0.01,
+  
+  "visualize_network": true,
+  "visualize_solution": true,
+  "save_model_file": false
+}

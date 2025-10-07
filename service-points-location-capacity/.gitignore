@@ -1,0 +1,37 @@
+
+
+```gitignore
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# Gurobi specific
+*.log
+*.lp
+*.mps
+*.sol
+
+
+# IDE specific files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+
+# Python egg files
+*.egg-info/
+dist/
+build/
+
+data\output\osm\austria-latest.osm.pbf

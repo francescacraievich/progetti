@@ -1,0 +1,48 @@
+SCALABILITY TEST REPORT
+======================================================================
+Date: 2025-08-26 12:07:41
+Model: SP Location and Capacity (Raviv, 2023)
+Data: OpenStreetMap Austria (Vienna, Graz, Linz)
+
+TEST CONFIGURATION:
+--------------------------------------------------
+- Pickup probability (p): 0.5
+- Rejection cost (α): 10
+- Service radius: 300m
+- Capacities: S = {30, 60, 90}
+- Setup costs: base=10k$, var=1/6 * capacity
+
+RESULTS:
+--------------------------------------------------
+Instances tested: 18
+Range n: 238 - 13600
+Total test time: 63863.0s
+
+
+GRAZ:
+  Instances: 6
+  Demand points: 448 - 4485
+  Average time: 270.18s
+  Average cost: $3,919,239
+  Average SPs: 393.2
+
+LINZ:
+  Instances: 6
+  Demand points: 238 - 2385
+  Average time: 129.98s
+  Average cost: $5,784,117
+  Average SPs: 184.5
+
+VIENNA:
+  Instances: 6
+  Demand points: 1360 - 13600
+  Average time: 10243.67s
+  Average cost: $5,866,966
+  Average SPs: 1146.8
+
+
+COMPUTATIONAL COMPLEXITY:
+--------------------------------------------------
+Estimated from data: O(n^1.66)
+Paper (theoretical): O(n^3)
+Paper (practical): O(n^2)
