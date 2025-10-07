@@ -1,16 +1,16 @@
 # Home Office Network Asset Inventory 🔒
 
-## 📋 Project Overview
+## Project Overview
 This project demonstrates **Asset Management** principles for a small business home office network. The inventory identifies and classifies network-connected devices based on their security sensitivity levels.
 
 ---
 
-## 🏠 Scenario
+## Scenario
 Operating a small business from home requires careful management of network-connected devices. This inventory helps identify which devices contain sensitive information requiring extra protection.
 
 ---
 
-## 📊 Network Device Inventory
+## Network Device Inventory
 
 | # | Asset | Network Access | Owner | Location | Notes | Sensitivity |
 |---|-------|----------------|-------|----------|-------|-------------|
@@ -23,7 +23,7 @@ Operating a small business from home requires careful management of network-conn
 
 ---
 
-## 🔐 Sensitivity Classification System
+## Sensitivity Classification System
 
 | Category | Access Level | Description | Risk Level |
 |----------|-------------|-------------|------------|
@@ -34,7 +34,7 @@ Operating a small business from home requires careful management of network-conn
 
 ---
 
-## 📝 Device Analysis
+## Device Analysis
 
 ### Critical Assets (Require Maximum Protection)
 - **External Hard Drive**: Contains financial records and business-critical backups
@@ -50,7 +50,7 @@ Operating a small business from home requires careful management of network-conn
 
 ---
 
-## 🛡️ Security Recommendations
+## Security Recommendations
 
 Based on this inventory, the following security measures are recommended:
 
@@ -75,7 +75,7 @@ Based on this inventory, the following security measures are recommended:
 
 ---
 
-## 📈 Risk Assessment Matrix
+## Risk Assessment Matrix
 
 | Device | Confidentiality Impact | Integrity Impact | Availability Impact | Overall Risk |
 |--------|------------------------|------------------|--------------------|--------------| 
@@ -88,7 +88,7 @@ Based on this inventory, the following security measures are recommended:
 
 ---
 
-## 🎯 Key Takeaways
+## Key Takeaways
 
 - **6 devices** identified and classified
 - **2 critical assets** requiring maximum protection
@@ -97,7 +97,7 @@ Based on this inventory, the following security measures are recommended:
 
 ---
 
-## 📚 References
+## References
 
 - [NIST Cybersecurity Framework](https://www.nist.gov/cyberframework)
 - [ISO 27001 Asset Management](https://www.iso.org/isoiec-27001-information-security.html)
